@@ -59,7 +59,8 @@ const ToastClose = React.forwardRef<
       "absolute right-2 top-2 rounded-md p-1 opacity-0 transition-opacity hover:opacity-100 group-hover:opacity-100",
       className,
     )}
-    toast-close=""
+    data-toast-close=""
+    aria-label="Dismiss notification"
     {...props}
   >
     <X className="h-4 w-4" />

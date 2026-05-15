@@ -6,6 +6,7 @@ import { ShareButton } from "@/components/share-button";
 import { ArabicSection } from "./arabic-section";
 import { ViewTracker } from "./view-tracker";
 import { getHadithById } from "@/lib/hadiths";
+import { getSiteUrl } from "@/lib/site";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -19,11 +20,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const title = `Sahih al-Bukhari ${h.hadith_number}${
     h.chapter_title_en ? `: ${h.chapter_title_en}` : ""
   }`;
+  const canonicalUrl = `${getSiteUrl()}/hadith/${h.id}`;
   return {
     title,
     description,
     alternates: {
-      canonical: `/hadith/${h.id}`,
+      canonical: canonicalUrl,
+      types: {
+        "text/html": `https://sunnah.com/bukhari:${h.hadith_number}`,
+      },
     },
   };
 }
@@ -35,9 +40,34 @@ export default async function HadithDetailPage({ params }: Params) {
   if (!h) notFound();
 
   const grade = h.grades?.[0];
+  const canonicalUrl = `${getSiteUrl()}/hadith/${h.id}`;
+  const sunnahUrl = `https://sunnah.com/bukhari:${h.hadith_number}`;
+
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: `Sahih al-Bukhari ${h.hadith_number}${h.chapter_title_en ? `: ${h.chapter_title_en}` : ""}`,
+    description: h.text_en.slice(0, 150),
+    inLanguage: "en",
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": canonicalUrl,
+    },
+    author: h.narrator ? { "@type": "Person", name: h.narrator } : undefined,
+    publisher: {
+      "@type": "Organization",
+      name: "Sunnah.com (translation by Muhsin Khan)",
+    },
+  };
 
   return (
     <article className="mx-auto max-w-3xl space-y-6">
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted static JSON-LD
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
+
       <ViewTracker hadithId={h.id} />
 
       <header className="space-y-2 border-b border-[hsl(var(--border))] pb-4">
@@ -96,6 +126,14 @@ export default async function HadithDetailPage({ params }: Params) {
       <footer className="flex flex-wrap items-center gap-2 border-t border-[hsl(var(--border))] pt-4">
         <BookmarkButton hadithId={h.id} />
         <ShareButton hadithId={h.id} />
+        <a
+          href={sunnahUrl}
+          rel="noreferrer external nofollow"
+          target="_blank"
+          className="ml-auto text-sm text-[hsl(var(--muted-foreground))] underline-offset-2 hover:underline"
+        >
+          View on Sunnah.com ↗
+        </a>
       </footer>
     </article>
   );

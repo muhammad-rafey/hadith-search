@@ -10,6 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default function BrowsePage() {
+  // TODO: getAllBooks() is O(N) over mock data (full scan of MOCK_HADITHS to
+  // compute hadith_count per book). Replace with a Supabase aggregation query
+  // once the real corpus lands.
   const books = getAllBooks();
 
   return (

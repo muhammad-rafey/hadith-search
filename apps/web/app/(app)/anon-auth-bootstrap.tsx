@@ -28,6 +28,7 @@ export function AnonAuthBootstrap() {
           if (error || cancelled) return;
           userId = signed.user?.id;
         }
+        if (cancelled) return;
         if (userId && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
           posthog.identify(userId);
         }

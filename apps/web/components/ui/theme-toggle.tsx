@@ -20,12 +20,13 @@ export function ThemeToggle() {
     themeChanged(next);
   };
 
-  // Render a stable placeholder until we know the resolved theme; avoids
-  // hydration mismatch on the icon swap.
+  // Render a neutral placeholder until we know the resolved theme; avoids
+  // hydration mismatch — the <Sun> icon would flash before the real theme is
+  // resolved, so we use an invisible span of the same dimensions instead.
   if (!mounted) {
     return (
       <Button variant="ghost" size="icon" aria-label="Toggle theme">
-        <Sun className="h-4 w-4" />
+        <span className="h-4 w-4" aria-hidden="true" />
       </Button>
     );
   }

@@ -2,7 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getBookByNumber, getHadithsForBook } from "@/lib/hadiths";
+import { getAllBooks, getBookByNumber, getHadithsForBook } from "@/lib/hadiths";
+
+export function generateStaticParams() {
+  return getAllBooks().map((b) => ({ book: String(b.book_number) }));
+}
 
 interface Params {
   params: Promise<{ book: string }>;

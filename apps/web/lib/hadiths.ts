@@ -1,5 +1,11 @@
 import { MOCK_BOOKS, MOCK_HADITHS, type Hadith } from "@hadith/shared-types";
 
+/**
+ * NOTE: All functions in this file are O(N) linear scans over MOCK_HADITHS /
+ * MOCK_BOOKS (N ≈ 10 during local dev). They will be replaced by indexed
+ * Supabase queries once the real corpus lands (see plan/05-roadmap.md Phase 1).
+ */
+
 export interface BookSummary {
   book_number: number;
   book_name_en: string;

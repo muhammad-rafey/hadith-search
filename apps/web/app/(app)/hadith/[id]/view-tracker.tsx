@@ -7,13 +7,38 @@ interface ViewTrackerProps {
   hadithId: string;
 }
 
+const SESSION_STORAGE_KEY = "hadith-search:viewed-ids";
+
+function getViewedIds(): Set<string> {
+  try {
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+function markViewed(id: string): void {
+  try {
+    const ids = getViewedIds();
+    ids.add(id);
+    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify([...ids]));
+  } catch {
+    // sessionStorage may be unavailable in some environments; non-fatal.
+  }
+}
+
 /**
- * Fires `hadith_viewed` once per mount. Source is inferred from
+ * Fires `hadith_viewed` once per hadith id per session. Source is inferred from
  * document.referrer (rough heuristic): /search → "search", /browse → "browse",
  * /bookmarks → "bookmark", anything else → "deeplink".
  */
 export function ViewTracker({ hadithId }: ViewTrackerProps) {
   React.useEffect(() => {
+    // Per-session de-duplication: skip if already fired for this id.
+    if (getViewedIds().has(hadithId)) return;
+
     let source: HadithViewSource = "deeplink";
     try {
       const ref = document.referrer ? new URL(document.referrer) : null;
@@ -26,6 +51,7 @@ export function ViewTracker({ hadithId }: ViewTrackerProps) {
       // ignore
     }
     hadithViewed(hadithId, source);
+    markViewed(hadithId);
   }, [hadithId]);
   return null;
 }

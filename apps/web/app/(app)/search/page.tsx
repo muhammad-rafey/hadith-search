@@ -42,6 +42,9 @@ function SearchPageInner() {
   const search = useSearch();
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [hasQuery, setHasQuery] = React.useState(initial.trim().length > 0);
+  // Store the query hash that corresponds to the currently displayed results,
+  // so click analytics references the actual query hash, not the latest input.
+  const [resultQueryHash, setResultQueryHash] = React.useState<string>("");
 
   // Debounce the input by DEBOUNCE_MS.
   React.useEffect(() => {
@@ -50,6 +53,17 @@ function SearchPageInner() {
   }, [query]);
 
   const mutateAsync = search.mutateAsync;
+
+  // Canonical form matches the Edge Function's hash key:
+  // language + "|" + (book ?? "") + "|" + (narrator ?? "") + "|" + trimmed_lowercase_query
+  function canonicalize(vars: SearchRequest): string {
+    return [
+      vars.language,
+      String(vars.book ?? ""),
+      (vars.narrator ?? "").trim(),
+      vars.query.trim().toLowerCase(),
+    ].join("|");
+  }
 
   // Fire the search whenever the debounced query or filters change.
   // biome-ignore lint/correctness/useExhaustiveDependencies: mutateAsync is stable
@@ -69,22 +83,25 @@ function SearchPageInner() {
       topK: 10,
       ...(bookFilter ? { book: bookFilter } : {}),
       ...(narratorFilter.trim() ? { narrator: narratorFilter.trim() } : {}),
+      skip_cache: useUiStore.getState().privateMode,
     };
 
     let cancelled = false;
     (async () => {
-      const queryHash = await sha256Hex(trimmed);
-      searchSubmitted({
-        query_hash: queryHash,
-        query_length: trimmed.length,
-        language: vars.language,
-        has_book_filter: !!vars.book,
-        has_narrator_filter: !!vars.narrator,
-      });
+      const queryHash = await sha256Hex(canonicalize(vars));
       try {
         const data = await mutateAsync(vars);
         if (cancelled) return;
         setResults(data.results);
+        // Store the hash that produced this result set for click analytics.
+        setResultQueryHash(queryHash);
+        searchSubmitted({
+          query_hash: queryHash,
+          query_length: trimmed.length,
+          language: vars.language,
+          has_book_filter: !!vars.book,
+          has_narrator_filter: !!vars.narrator,
+        });
         searchResultsReturned({
           query_hash: queryHash,
           result_count: data.results.length,
@@ -105,17 +122,30 @@ function SearchPageInner() {
   const tokens = React.useMemo(() => tokenizeQuery(debounced), [debounced]);
 
   const onResultClick = React.useCallback(
-    async (result: SearchResult, position: number) => {
-      const queryHash = await sha256Hex(debounced.trim());
+    (result: SearchResult, position: number) => {
       searchResultClicked({
-        query_hash: queryHash,
+        // Use the hash of the query that produced the current results, not
+        // the latest (possibly mid-typing) input.
+        query_hash: resultQueryHash,
         hadith_id: result.id,
         position,
         relevance: result.relevance ?? null,
       });
     },
-    [debounced],
+    [resultQueryHash],
   );
+
+  // aria-live status message — always in the DOM so screen readers track it.
+  let statusMessage = "";
+  if (hasQuery) {
+    if (search.isPending) {
+      statusMessage = "Searching…";
+    } else if (results.length === 0) {
+      statusMessage = "No results found.";
+    } else {
+      statusMessage = `${results.length} result${results.length === 1 ? "" : "s"} found.`;
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -127,6 +157,11 @@ function SearchPageInner() {
       </div>
 
       <SearchBox value={query} onChange={setQuery} loading={search.isPending} autoFocus />
+
+      {/* Always rendered so aria-live is in the DOM from the start */}
+      <output aria-live="polite" aria-atomic="true" className="sr-only">
+        {statusMessage}
+      </output>
 
       <fieldset className="space-y-3 rounded-md border border-[hsl(var(--border))] p-3">
         <legend className="px-1 text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">

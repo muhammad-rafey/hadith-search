@@ -18,7 +18,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.19.4
           cache: pnpm
 
       - name: Install dependencies
@@ -36,7 +36,25 @@ jobs:
       - name: Build
         run: pnpm build
         env:
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          NEXT_PUBLIC_SENTRY_DSN: ""
+          SENTRY_DSN: ""
           NEXT_PUBLIC_POSTHOG_KEY: ""
           NEXT_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+          COHERE_API_KEY: ""
+          SENTRY_SUPPRESS_GLOBAL_ERROR_HANDLER_FILE_WARNING: "1"
+
+  deno-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Typecheck Edge Functions
+        run: |
+          deno check supabase/functions/search/index.ts
+          deno check supabase/functions/feedback/index.ts

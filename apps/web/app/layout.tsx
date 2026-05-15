@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Amiri, Inter } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { getSiteUrl } from "@/lib/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -17,7 +18,7 @@ const amiri = Amiri({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://hadithapp.tld"),
+  metadataBase: new URL(getSiteUrl()),
   title: {
     default: "Hadith Search · Sahih al-Bukhari",
     template: "%s · Hadith Search",

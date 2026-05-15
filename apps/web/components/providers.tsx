@@ -7,16 +7,9 @@ import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { Toaster } from "@/components/ui/toaster";
 
-if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
-  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
-    capture_pageview: true,
-    capture_pageleave: true,
-    autocapture: false,
-    disable_session_recording: true,
-    persistence: "localStorage+cookie",
-  });
-}
+// NOTE: defaultTheme is intentionally "light" rather than "system" — the app
+// has a custom "sepia" theme that next-themes cannot map to a system value, so
+// we default to light and let users switch via the ThemeToggle themselves.
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
@@ -33,6 +26,25 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }),
   );
 
+  // Initialise PostHog inside a useEffect so it only ever runs in the browser
+  // and is never called more than once (React StrictMode double-invokes effects
+  // in dev, but posthog.__loaded guards against double-init).
+  React.useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return;
+    // posthog.init is idempotent when called with the same key, but guard
+    // explicitly to avoid duplicate configuration in strict-mode double runs.
+    if (!posthog.__loaded) {
+      posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
+        capture_pageview: true,
+        capture_pageleave: true,
+        autocapture: false,
+        disable_session_recording: true,
+        persistence: "localStorage+cookie",
+      });
+    }
+  }, []);
+
   return (
     <ThemeProvider
       attribute="data-theme"
@@ -43,7 +55,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <PostHogProvider client={posthog}>
-          <Toaster>{children}</Toaster>
+          {children}
+          {/* Toaster is a self-contained portal renderer — NOT a wrapper */}
+          <Toaster />
         </PostHogProvider>
       </QueryClientProvider>
     </ThemeProvider>
