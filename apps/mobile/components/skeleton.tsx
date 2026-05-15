@@ -20,13 +20,17 @@ export function Skeleton({ className }: { className?: string }) {
     );
     loop.start();
     let cancelled = false;
-    AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
-      if (cancelled) return;
-      if (reduce) {
-        loop.stop();
-        opacity.setValue(0.7);
-      }
-    });
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((reduce) => {
+        if (cancelled) return;
+        if (reduce) {
+          loop.stop();
+          opacity.setValue(0.7);
+        }
+      })
+      .catch(() => {
+        // Platform can't report the setting — keep the pulsing fallback.
+      });
     return () => {
       cancelled = true;
       loop.stop();

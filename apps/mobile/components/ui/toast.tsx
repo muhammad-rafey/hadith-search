@@ -83,9 +83,13 @@ function ToastRow({ item, onDone }: { item: ToastItem; onDone: () => void }) {
 
   React.useEffect(() => {
     let cancelled = false;
-    AccessibilityInfo.isReduceMotionEnabled().then((v) => {
-      if (!cancelled) setReduceMotion(v);
-    });
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((v) => {
+        if (!cancelled) setReduceMotion(v);
+      })
+      .catch(() => {
+        // Platform can't report the setting — keep the default (animated).
+      });
     Animated.timing(progress, {
       toValue: 1,
       duration: 180,
