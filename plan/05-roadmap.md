@@ -8,7 +8,7 @@ Sequence the work so the critical path is unblocked first, dependencies are visi
 
 ## Critical path
 
-```
+```text
 Phase 0 (setup) ──► Phase 1 (dump + schema) ──► Phase 2 (embedding) ──► Phase 3 (search API)
                             ▲                                                    │
                             │                                                    ▼
@@ -42,7 +42,7 @@ The single longest pole is **Sunnah.com permission** (an email + GitHub issue, r
 - Create Sentry org, PostHog project, Better Stack monitor (stubbed).
 - Create Vercel project (link to GitHub repo).
 - Initialize pnpm workspace at repo root:
-  ```
+  ```text
   hadith-search/
   ├── apps/web/            (Next.js 15 app — scaffold only, no features yet)
   ├── apps/scripts/        (TS scripts placeholder)
@@ -223,7 +223,7 @@ These get resolved as soon as the dump arrives — none of the other phases can 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
 | Sunnah.com declines redistribution permission | medium | high | Fall back to live API per hadith view, or switch to a different translation (Saheeh International, Maulana Bhatti) |
-| Dump format is incomplete (missing Arabic, narrators, grading) | medium | medium | Fill gaps from `fawazahmed0/hadith-api` (Apache 2.0–ish licensed) during ingestion |
+| Dump format is incomplete (missing Arabic, narrators, grading) | medium | medium | Fill gaps from `fawazahmed0/hadith-api` (The Unlicense, public domain) during ingestion |
 | Eval set recall@10 < 0.7 even after tuning | low | high | Increase rerank `topN`, add context concatenation (book/chapter prefix on embedding), try Voyage `voyage-3.5` as a secondary embed model |
 | Cohere outage during launch | low | medium | Embedding fallback to OpenAI `text-embedding-3-small` behind a feature flag; rerank fallback is the raw RRF score |
 | User search volume spikes 10× (viral moment) | low | medium | Cache hit rate scales naturally; Supabase compute can be bumped via dashboard; Cohere has burst capacity |

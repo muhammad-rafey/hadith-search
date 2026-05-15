@@ -36,7 +36,7 @@ All events are fired from the web client unless noted. Properties listed below; 
 
 | Event | Properties |
 |---|---|
-| `search_submitted` | `query_hash`, `query_length`, `language`, `has_book_filter`, `has_narrator_filter`, `from_suggestion` (bool) |
+| `search_submitted` | `query_hash`, `query_length`, `language`, `has_book_filter`, `has_narrator_filter` |
 | `search_results_returned` | `query_hash`, `result_count`, `mode` (cache/fresh/reference/empty), `latency_ms`, `degraded` (bool) |
 | `search_result_clicked` | `query_hash`, `hadith_id`, `position`, `relevance` |
 | `search_feedback_given` | `query_hash`, `hadith_id`, `position`, `thumb` ("up" / "down") |
@@ -59,7 +59,7 @@ User identification: PostHog distinct ID is set to the Supabase anonymous `auth.
 - Auto-instrumentation: errors, perf transactions, route changes.
 - `tracesSampleRate: 0.1` in production, `1.0` in preview.
 - Source maps uploaded via `@sentry/webpack-plugin` (built into `withSentryConfig`).
-- Breadcrumbs include `query_hash`, NOT raw query text. Override default fetch breadcrumbs to redact request bodies for the `/search` endpoint.
+- Breadcrumbs include `query_hash`, NOT raw query text. Override default fetch breadcrumbs to redact request bodies for the search Edge Function endpoint.
 - Custom tag `hadith_id` set on hadith detail pages so errors are bucketable by document.
 
 ```ts
@@ -68,8 +68,14 @@ Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   tracesSampleRate: 0.1,
   beforeBreadcrumb(breadcrumb) {
-    if (breadcrumb.category === "fetch" && breadcrumb.data?.url?.includes("/search")) {
-      // Strip request body so raw query never lands in Sentry
+    // Match only the actual Supabase Edge Function path, not any URL that happens
+    // to contain "/search" (e.g., a future /settings/search page).
+    const url = breadcrumb.data?.url;
+    if (
+      breadcrumb.category === "fetch" &&
+      typeof url === "string" &&
+      /\/functions\/v1\/search(?:[/?]|$)/.test(url)
+    ) {
       if (breadcrumb.data) delete breadcrumb.data.body;
     }
     return breadcrumb;

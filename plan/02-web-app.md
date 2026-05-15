@@ -29,7 +29,7 @@ A fast, accessible, SEO-friendly web app at (proposed) `https://hadithapp.tld` t
 
 ## Routing tree
 
-```
+```text
 app/
 ├── (marketing)/
 │   ├── layout.tsx                 minimal shell, no auth
@@ -182,6 +182,16 @@ Don't enable `next-intl` at launch, but structure code so it's a one-week additi
 - No sign-up wall at launch.
 - Bookmarks: localStorage for anonymous, Supabase row when user upgrades to email/Apple/Google later.
 
+### Bookmark migration on auth upgrade
+
+When an anonymous user signs in with a real provider:
+
+1. Detect the upgrade in the auth state listener (anonymous JWT → authenticated JWT for the same `auth.uid()` — Supabase preserves the UID across the upgrade, so existing rows tied to that UID persist automatically).
+2. For bookmarks held only in localStorage (created before the upgrade or while offline): read all entries, dedupe by `hadith_id`, and on conflict prefer the newer `updated_at`.
+3. Write the merged set in a single batched `upsert` to the `bookmarks` table, then mark a `bookmarks_migrated_at` flag on the user's profile row to make the migration idempotent.
+4. On network failure: leave localStorage intact, surface a non-blocking toast with a manual retry, and re-attempt on next app load.
+5. Migration runs automatically — no user prompt — since bookmarks are non-destructive metadata.
+
 ---
 
 ## Deployment
@@ -189,6 +199,10 @@ Don't enable `next-intl` at launch, but structure code so it's a one-week additi
 - Vercel project linked to the GitHub repo, branch `main` = production, PR branches = preview URLs.
 - Environment variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server-only), `SENTRY_DSN`, `NEXT_PUBLIC_POSTHOG_KEY`.
 - Edge runtime for API routes where possible; default Node for `/api/search` proxy.
+
+**Key boundary (do not blur):**
+- **Anon key** (`NEXT_PUBLIC_SUPABASE_ANON_KEY`) — safe in the browser bundle. Used by `@supabase/ssr` for SSR hadith detail / browse / bookmarks reads — RLS enforces row visibility.
+- **Service role key** (`SUPABASE_SERVICE_ROLE_KEY`) — server-only, never imported into a Client Component. Used exclusively by the search Edge Function for `search_hadiths` RPC, `query_cache` writes, and `search_logs` analytics inserts (these need to bypass RLS or run with elevated privilege). If a Next.js API route ever needs the service role, mark the file with `import "server-only"` so a stray client import fails the build.
 
 ---
 

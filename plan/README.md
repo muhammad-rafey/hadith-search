@@ -31,7 +31,7 @@ Out of scope for v1: AI-generated commentary, full-text scholarly commentaries, 
 | Backend | **Supabase Edge Functions** (Deno) | Co-located with Postgres, single platform, sub-100 ms cold starts |
 | DB + Vector | **Supabase Postgres** with **pgvector** (`halfvec(1024)` + HNSW) + `tsvector` for FTS | One platform, native hybrid via RRF, plenty of headroom at our scale |
 | Embedding | **Cohere `embed-v4.0`** (1024-dim, Matryoshka) | Multilingual from day one (Arabic, Urdu later) without re-embedding |
-| Reranker | **Cohere Rerank 3.5** | Multilingual cross-encoder; recovers proper-noun precision |
+| Reranker | **Cohere Rerank 4.0** (`rerank-v4.0-pro`) | Multilingual cross-encoder; recovers proper-noun precision |
 | Caching | Postgres `query_cache` (7-day TTL) + Edge isolate LRU + client TanStack Query | Religious search is bursty; cache hits dominate cost |
 | Analytics | **PostHog** + **Sentry** | Privacy-aware: hash queries, never log raw text |
 | Hosting | **Vercel** for web; **Supabase** for backend | Standard, cheap at the scale we care about |
@@ -39,7 +39,7 @@ Out of scope for v1: AI-generated commentary, full-text scholarly commentaries, 
 ### Three architectural anchors (do not skip)
 
 1. **Cloud-side embedding & search.** No on-device models. Older phones (when mobile lands) can't run multilingual embedding models well, and cloud lets us iterate on retrieval without app updates.
-2. **Cohere embed-v4 + Rerank 3.5 from day one.** Multilingual support is locked in cheaply; switching embedding models later means re-embedding everything.
+2. **Cohere embed-v4 + Rerank 4.0 from day one.** Multilingual support is locked in cheaply; switching embedding models later means re-embedding everything.
 3. **Hybrid retrieval (BM25 + vector) fused with RRF, then cross-encoder rerank.** Hadith corpora live or die on proper-noun handling (Abu Hurairah / Aishah / ʿUmar transliterations); pure vector search is not enough.
 
 ---
@@ -73,7 +73,7 @@ Once the dump is delivered, two new files will be added: `00-data-schema.md` and
 
 - These are living documents. Update in place as decisions change; commit on the feature branch with the change.
 - Each module file has a **Verification** section — that's the bar for "this module is done."
-- If a decision in a module file contradicts the TL;DR above, fix the TL;DR. The README is the source of truth.
+- If a decision in a module file contradicts the TL;DR above, fix the module file. The README is the source of truth for stack-level choices; module files own implementation detail.
 - When implementation starts, the module files become a checklist; don't delete them after shipping — they document the *why*.
 
 ---

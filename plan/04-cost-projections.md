@@ -13,7 +13,7 @@ All figures USD/month, list prices as of mid-2026.
 - **20 searches per MAU per month.** Pure browsing/reading is free (handled by Postgres reads + static Next.js).
 - **50% cache hit rate** at the Postgres `query_cache` layer once usage stabilizes. Cached searches skip embed + rerank.
 - **Cohere `embed-v4`:** $0.12 per 1M tokens.
-- **Cohere `rerank-v3.5`:** $2 per 1,000 search calls (docs ≤ 500 tokens, ≤ 100 per call — we send 30).
+- **Cohere `rerank-v4.0-pro`:** $2 per 1,000 search calls (docs ≤ 500 tokens, ≤ 100 per call — we send 30). Pricing assumed unchanged from Rerank 3.5; verify in Cohere console before launch.
 - **Average query:** ~10 tokens for embedding.
 - **Supabase Pro:** $25/mo base.
 - **Vercel:** Hobby is fine until launch; Pro ($20/mo) once we want analytics + larger build minutes + team seats.
@@ -93,8 +93,8 @@ The reranker now dominates. Evaluate cost levers before crossing 25k MAU.
 | **Reranker (self-hosted bge-reranker-v2-m3 on Modal)** | 24×7 small GPU + bursts | **~$200–400** |
 | Edge Function beyond 2M free | ~2M extra × $2/M | $4 |
 | Sentry + PostHog paid tier (more events) | | $50 |
-| **Total (Cohere path)** | | **~$2,280 / month** |
-| **Total (self-hosted reranker path)** | | **~$680 / month** |
+| **Total (Cohere path)** | 150 + 58 + 1.20 + 2,000 + 4 + 50 | **~$2,263 / month** |
+| **Total (self-hosted reranker path)** | 150 + 58 + 1.20 + (200 to 400) + 4 + 50 | **~$463–663 / month** |
 
 At 100k MAU, swap to a self-hosted reranker — or negotiate Cohere committed pricing.
 

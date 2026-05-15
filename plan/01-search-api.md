@@ -19,7 +19,7 @@ A single Supabase Edge Function at `/functions/v1/search` that accepts a user qu
 | Vector store | Supabase `pgvector` — `halfvec(1024)` + HNSW (`m=16, ef_construction=64`) |
 | Keyword retrieval | Postgres `tsvector` + `websearch_to_tsquery('english', ...)` |
 | Fusion | Reciprocal Rank Fusion (RRF) in a single SQL RPC |
-| Reranker | Cohere `rerank-v3.5`, `topN: 10` from a 30-candidate slate |
+| Reranker | Cohere `rerank-v4.0-pro`, `topN: 10` from a 30-candidate slate |
 | Cache | Postgres `query_cache` table (7-day TTL) + isolate-local LRU |
 | Auth | Supabase JWT (anonymous OK), JWT-based rate limit |
 | Fallback embedder | OpenAI `text-embedding-3-small` behind a feature flag |
@@ -28,7 +28,7 @@ A single Supabase Edge Function at `/functions/v1/search` that accepts a user qu
 
 ## Pipeline
 
-```
+```text
 client request (POST /search)
         │
         ▼
@@ -54,7 +54,7 @@ client request (POST /search)
 └──────────┬──────────────┘
            ▼
 ┌─────────────────────────┐
-│ 5. Rerank               │   Cohere rerank-v3.5, top 10
+│ 5. Rerank               │   Cohere rerank-v4.0-pro, top 10
 │                         │   ~150–300 ms
 └──────────┬──────────────┘
            ▼
@@ -138,17 +138,18 @@ create or replace function search_hadiths(
   collection_filter  text  default 'bukhari',
   book_filter        int   default null,
   narrator_filter    text  default null,
-  language_filter    text  default 'en'
+  language_filter    text  default 'en',
+  ts_config          regconfig default 'english'
 )
 returns table (...)
 language sql stable as $$
   with full_text as (
     select h.id,
            row_number() over (
-             order by ts_rank_cd(h.fts, websearch_to_tsquery('english', query_text)) desc
+             order by ts_rank_cd(h.fts, websearch_to_tsquery(ts_config, query_text)) desc
            ) as rank_ix
     from hadiths h
-    where h.fts @@ websearch_to_tsquery('english', query_text)
+    where h.fts @@ websearch_to_tsquery(ts_config, query_text)
       and h.collection = collection_filter
       and h.language = language_filter
       and (book_filter is null or h.book_number = book_filter)
@@ -180,6 +181,11 @@ $$;
 ```
 
 Adapted from Supabase's published hybrid-search pattern. Lock in once the `hadiths` schema is finalized.
+
+**Per-language text-search config.** The `ts_config` parameter (a Postgres `regconfig`) drives both the `websearch_to_tsquery` call and is implicitly tied to how the stored `hadiths.fts` column was built. Postgres ships `english` (and a few other Indo-European configs) but not `arabic` or `urdu`. The schema design (next module, post-dump) will decide between:
+- A single `fts` column built with `simple` config plus per-language stemming handled at query time (cheapest, weakest stemming for Arabic).
+- Per-language columns (`fts_en`, `fts_ar`, `fts_ur`) selected dynamically — needed if we want proper Arabic root stemming via a custom dictionary.
+The Edge Function passes `ts_config` derived from the request `language` (`'english' | 'simple' | ...`).
 
 ---
 
@@ -225,12 +231,13 @@ Deno.serve(async (req) => {
     book_filter: book ?? null,
     narrator_filter: narrator ?? null,
     language_filter: language,
+    ts_config: language === "en" ? "english" : "simple",
   });
   if (!candidates?.length) return Response.json({ results: [], mode: "empty" });
 
   // 5. Rerank
   const rerank = await cohere.rerank({
-    model: "rerank-v3.5",
+    model: "rerank-v4.0-pro",
     query,
     documents: candidates.map((c) => c.text_en_full),
     topN: topK,
@@ -257,7 +264,7 @@ Deno.serve(async (req) => {
 
 | Failure | Behavior |
 |---|---|
-| Cohere embed times out (> 2 s) | Fall back to OpenAI `text-embedding-3-small` (1536-dim — needs a parallel index or a runtime projection; document the cost) |
+| Cohere embed times out (> 2 s) | Fall back to OpenAI `text-embedding-3-small` requested at `dimensions: 1024` (Matryoshka truncation, native API support) so it lands in the existing `halfvec(1024)` index without a parallel index or runtime projection. **Marked out of scope for MVP** — wired only as a feature-flag-toggleable path; will be enabled and benchmarked only if a Cohere outage hits production. RRF fusion handles mixed-provider scores fine because RRF uses ranks, not raw similarities. |
 | Cohere rerank fails | Skip rerank, return RRF-ordered top-K with a `degraded: true` flag |
 | Postgres RPC empty | Return `{ results: [], mode: "empty" }` — client shows "no matches, try rephrasing" |
 | Cache write fails | Log warning, return result normally |
