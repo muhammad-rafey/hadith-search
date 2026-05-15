@@ -1,0 +1,189 @@
+import { useRouter } from "expo-router";
+import * as React from "react";
+import { View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { SearchRequest, SearchResult } from "@hadith/shared-types";
+import { FilterChips } from "@/components/filter-chips";
+import { ResultList } from "@/components/result-list";
+import { SearchBox } from "@/components/search-box";
+import { Text } from "@/components/ui/text";
+import {
+  type SearchResultsReturnedProps,
+  searchResultClicked,
+  searchResultsReturned,
+  searchSubmitted,
+  sha256Hex,
+} from "@/lib/analytics";
+import { tokenizeQuery } from "@/lib/highlight";
+import { useSearch } from "@/lib/queries/use-search";
+import { useUiStore } from "@/lib/store/ui-store";
+
+const QUERY_DEBOUNCE_MS = 250;
+const NARRATOR_DEBOUNCE_MS = 200;
+
+/**
+ * Search screen — faithful port of apps/web/app/(app)/search/page.tsx:
+ * 250 ms query debounce, shared SearchRequest contract, TanStack mutation,
+ * stale-result cancellation, and the same analytics taxonomy. State machine
+ * (initial / typing / loading / results / empty / error) is handled by
+ * ResultList; this screen owns input + filter state and request orchestration.
+ */
+export default function SearchScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+
+  const bookFilter = useUiStore((s) => s.bookFilter);
+  const narratorFilter = useUiStore((s) => s.narratorFilter);
+  const setBookFilter = useUiStore((s) => s.setBookFilter);
+  const setNarratorFilter = useUiStore((s) => s.setNarratorFilter);
+  const clearFilters = useUiStore((s) => s.clearFilters);
+  const lastQuery = useUiStore((s) => s.lastQuery);
+  const setLastQuery = useUiStore((s) => s.setLastQuery);
+
+  const [query, setQuery] = React.useState(lastQuery);
+  const [debounced, setDebounced] = React.useState(lastQuery);
+  const [debouncedNarrator, setDebouncedNarrator] = React.useState(narratorFilter);
+  const [results, setResults] = React.useState<SearchResult[]>([]);
+  const [hasQuery, setHasQuery] = React.useState(lastQuery.trim().length > 0);
+
+  const search = useSearch();
+  const mutateAsync = search.mutateAsync;
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebounced(query), QUERY_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedNarrator(narratorFilter), NARRATOR_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [narratorFilter]);
+
+  const runSearch = React.useCallback(
+    (raw: string, book: number | null, narrator: string) => {
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        setResults([]);
+        setHasQuery(false);
+        return () => {};
+      }
+      setHasQuery(true);
+      setLastQuery(trimmed);
+
+      const vars: SearchRequest = {
+        query: trimmed,
+        language: "en",
+        topK: 10,
+        ...(book ? { book } : {}),
+        ...(narrator.trim() ? { narrator: narrator.trim() } : {}),
+      };
+
+      let cancelled = false;
+      (async () => {
+        const queryHash = await sha256Hex(trimmed);
+        searchSubmitted({
+          query_hash: queryHash,
+          query_length: trimmed.length,
+          language: vars.language ?? "en",
+          has_book_filter: !!vars.book,
+          has_narrator_filter: !!vars.narrator,
+        });
+        try {
+          const data = await mutateAsync(vars);
+          if (cancelled) return;
+          setResults(data.results);
+          searchResultsReturned({
+            query_hash: queryHash,
+            result_count: data.results.length,
+            mode: data.mode as SearchResultsReturnedProps["mode"],
+            latency_ms: data.latency_ms,
+            degraded: data.degraded ?? false,
+          });
+        } catch {
+          // Error surfaces via search.error in ResultList.
+        }
+      })();
+
+      return () => {
+        cancelled = true;
+      };
+    },
+    [mutateAsync, setLastQuery],
+  );
+
+  // Fire whenever the debounced query or filters change (same deps as web).
+  React.useEffect(() => {
+    return runSearch(debounced, bookFilter, debouncedNarrator);
+  }, [debounced, bookFilter, debouncedNarrator, runSearch]);
+
+  const tokens = React.useMemo(() => tokenizeQuery(debounced), [debounced]);
+
+  const onResultPress = React.useCallback(
+    async (result: SearchResult, position: number) => {
+      const queryHash = await sha256Hex(debounced.trim());
+      searchResultClicked({
+        query_hash: queryHash,
+        hadith_id: result.id,
+        position,
+        relevance: result.relevance ?? null,
+      });
+      router.push(`/hadith/${encodeURIComponent(result.id)}?from=search`);
+    },
+    [debounced, router],
+  );
+
+  const onClear = React.useCallback(() => {
+    setQuery("");
+    setDebounced("");
+    setResults([]);
+    setHasQuery(false);
+    setLastQuery("");
+    search.reset();
+  }, [search, setLastQuery]);
+
+  const onRetry = React.useCallback(() => {
+    search.reset();
+    runSearch(debounced, bookFilter, debouncedNarrator);
+  }, [search, runSearch, debounced, bookFilter, debouncedNarrator]);
+
+  return (
+    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+      <ResultList
+        results={results}
+        loading={search.isPending}
+        error={search.error}
+        hasQuery={hasQuery}
+        queryTokens={tokens}
+        onResultPress={onResultPress}
+        onRetry={onRetry}
+        ListHeaderComponent={
+          <View className="gap-4 pt-4">
+            <View>
+              <Text size="2xl" weight="semibold">
+                Search
+              </Text>
+              <Text size="sm" className="mt-1 text-muted-foreground">
+                Sahih al-Bukhari · semantic + keyword retrieval.
+              </Text>
+            </View>
+            <SearchBox
+              value={query}
+              onChangeText={setQuery}
+              onClear={onClear}
+              onSubmit={() => setDebounced(query)}
+              loading={search.isPending}
+              autoFocus
+            />
+            <FilterChips
+              bookFilter={bookFilter}
+              narratorFilter={narratorFilter}
+              onBookChange={setBookFilter}
+              onNarratorChange={setNarratorFilter}
+              onClear={clearFilters}
+            />
+          </View>
+        }
+      />
+    </View>
+  );
+}

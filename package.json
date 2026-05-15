@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "pnpm --filter @hadith/web dev",
+    "mobile": "pnpm --filter @hadith/mobile start",
     "build": "pnpm -r --parallel build",
     "lint": "pnpm -r --parallel lint",
     "typecheck": "pnpm -r --parallel typecheck",
@@ -18,5 +19,15 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "typescript": "^5.6.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "react-native-reanimated": "~3.16.7",
+      "react-native-css-interop": "0.1.22",
+      "react": "18.3.1",
+      "react-dom": "18.3.1",
+      "@types/react": "~18.3.12",
+      "@types/react-dom": "~18.3.1"
+    }
   }
 }

@@ -55,6 +55,10 @@ jobs:
         with:
           deno-version: v2.x
       - name: Typecheck Edge Functions
+        # Each function has its own deno.json import map. `deno check` discovers
+        # config from the CWD (repo root), not the entry file, so the map was
+        # never applied and npm:/jsr: specifiers failed to resolve. Pass the
+        # config explicitly per function.
         run: |
-          deno check supabase/functions/search/index.ts
-          deno check supabase/functions/feedback/index.ts
+          deno check --config supabase/functions/search/deno.json supabase/functions/search/index.ts
+          deno check --config supabase/functions/feedback/deno.json supabase/functions/feedback/index.ts
