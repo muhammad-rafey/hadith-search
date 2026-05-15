@@ -374,8 +374,11 @@ async function embedQuery(query: string): Promise<number[]> {
     inputType: "search_query",
     texts: [query],
     embeddingTypes: ["float"],
+    // `outputDimension` is valid for embed-v4 at the Cohere API level but is
+    // missing from cohere-ai@7.17.1's EmbedRequest type; assert through it so
+    // the 1024-dim contract (halfvec(1024)) is still sent.
     outputDimension: EMBED_DIM,
-  });
+  } as Parameters<typeof cohere.embed>[0] & { outputDimension: number });
 
   // The cohere-ai SDK returns `embeddings.float?: number[][]` in v4 responses.
   // Be defensive: the older shape was `embeddings: number[][]`.
