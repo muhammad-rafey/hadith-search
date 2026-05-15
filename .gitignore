@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Sentry
+.sentryclirc
+sentry-cli-*
+
+# Misc
+*.tgz
+.cache/

@@ -1,0 +1,22 @@
+{
+  "name": "hadith-search",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Semantic search over Sahih al-Bukhari (web first, mobile later)",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=20.19.4"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @hadith/web dev",
+    "build": "pnpm -r --parallel build",
+    "lint": "pnpm -r --parallel lint",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "format": "biome format --write .",
+    "format:check": "biome format ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "typescript": "^5.6.3"
+  }
+}
