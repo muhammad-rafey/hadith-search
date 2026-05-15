@@ -27,7 +27,12 @@ export default function HadithDetailScreen() {
   const id = decodeURIComponent(String(params.id));
   const h = React.useMemo(() => getHadithById(id), [id]);
 
+  // Fire the view/not-found event once per unique hadith id, not again when
+  // only the navigation source param changes.
+  const trackedId = React.useRef<string | null>(null);
   React.useEffect(() => {
+    if (trackedId.current === id) return;
+    trackedId.current = id;
     if (h) {
       hadithViewed(h.id, resolveSource(params.from));
     } else {

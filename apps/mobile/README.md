@@ -25,12 +25,13 @@ with the **Expo Go** app on a physical device.
 All optional. Create `apps/mobile/.env` (see the `EXPO_PUBLIC_*` block in the
 repo-root `.env.example`):
 
-```
+```bash
 EXPO_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 EXPO_PUBLIC_POSTHOG_KEY=<optional>
 EXPO_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 EXPO_PUBLIC_SENTRY_DSN=<optional>
+EXPO_PUBLIC_SHARE_BASE_URL=https://yourdomain.com/hadith/
 ```
 
 - **No Supabase vars** → mock mode (works offline, full UI).

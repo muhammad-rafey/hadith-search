@@ -23,7 +23,11 @@
   "pnpm": {
     "overrides": {
       "react-native-reanimated": "~3.16.7",
-      "react-native-css-interop": "0.1.22"
+      "react-native-css-interop": "0.1.22",
+      "react": "18.3.1",
+      "react-dom": "18.3.1",
+      "@types/react": "~18.3.12",
+      "@types/react-dom": "~18.3.1"
     }
   }
 }

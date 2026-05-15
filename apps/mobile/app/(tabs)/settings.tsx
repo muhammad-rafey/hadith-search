@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import * as React from "react";
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -141,7 +142,7 @@ export default function SettingsScreen() {
         </CardHeader>
         <CardContent>
           <Text size="xs" className="text-muted-foreground">
-            Version 0.0.1
+            Version {Constants.expoConfig?.version ?? "0.0.1"}
           </Text>
         </CardContent>
       </Card>

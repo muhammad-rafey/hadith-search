@@ -27,6 +27,7 @@ export const useBookmarks = create<BookmarksState>()(
         bookmarkAdded(id);
       },
       remove: (id) => {
+        if (!get().ids.includes(id)) return;
         set({ ids: get().ids.filter((x) => x !== id) });
         bookmarkRemoved(id);
       },

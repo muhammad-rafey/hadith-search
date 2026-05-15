@@ -28,7 +28,9 @@ export function HighlightText({
     <Text {...textProps}>
       {segments.map((seg) =>
         seg.match ? (
-          <Text key={seg.key} weight="semibold" className="text-primary" {...textProps}>
+          // No prop spread here: a nested RN <Text> inherits the parent's
+          // size/font, and spreading caller props could override the emphasis.
+          <Text key={seg.key} weight="semibold" className="text-primary">
             {seg.text}
           </Text>
         ) : (

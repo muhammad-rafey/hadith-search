@@ -55,7 +55,7 @@ export function SearchBox({
       <View className="absolute right-3 z-10">
         {loading ? (
           <ActivityIndicator size="small" color={hsl(theme, "muted-foreground")} />
-        ) : value.length > 0 ? (
+        ) : value.length > 0 && onClear ? (
           <Pressable
             haptic={false}
             onPress={onClear}

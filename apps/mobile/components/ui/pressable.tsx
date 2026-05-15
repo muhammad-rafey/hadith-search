@@ -29,8 +29,8 @@ export const Pressable = React.forwardRef<View, PressableProps>(
           }
           onPress?.(e);
         }}
-        style={({ pressed }) => [{ opacity: pressed && !disabled ? 0.6 : 1 }]}
-        className={cn(disabled && "opacity-50", className)}
+        style={({ pressed }) => [{ opacity: disabled ? 0.5 : pressed ? 0.6 : 1 }]}
+        className={className}
         {...rest}
       />
     );

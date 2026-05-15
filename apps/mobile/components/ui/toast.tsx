@@ -79,12 +79,12 @@ function ToastViewport({
 
 function ToastRow({ item, onDone }: { item: ToastItem; onDone: () => void }) {
   const progress = React.useRef(new Animated.Value(0)).current;
-  const reduceMotion = React.useRef(false);
+  const [reduceMotion, setReduceMotion] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;
     AccessibilityInfo.isReduceMotionEnabled().then((v) => {
-      if (!cancelled) reduceMotion.current = v;
+      if (!cancelled) setReduceMotion(v);
     });
     Animated.timing(progress, {
       toValue: 1,
@@ -104,7 +104,7 @@ function ToastRow({ item, onDone }: { item: ToastItem; onDone: () => void }) {
     };
   }, [progress, onDone]);
 
-  const translateY = reduceMotion.current
+  const translateY = reduceMotion
     ? 0
     : progress.interpolate({ inputRange: [0, 1], outputRange: [16, 0] });
 

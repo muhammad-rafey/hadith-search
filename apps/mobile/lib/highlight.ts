@@ -33,10 +33,26 @@ export interface Segment {
  * (case-insensitive). Same split semantics as the web's regex approach;
  * never interprets content as markup (RN has no innerHTML to worry about).
  */
+const MAX_TOKENS = 32;
+const MAX_TOKEN_LEN = 64;
+
 export function splitByTokens(text: string, tokens: string[]): Segment[] {
   if (!text) return [];
-  if (tokens.length === 0) return [{ text, match: false }];
-  const pattern = new RegExp(`(${tokens.map(escapeRegex).join("|")})`, "gi");
+  // Bound and normalize the token set before building the alternation regex:
+  // dedupe, cap length/count, and sort longest-first so longer tokens win
+  // over shorter prefixes. Prevents pathological regexes from pasted input.
+  const normalized = [
+    ...new Set(
+      tokens
+        .map((t) => t.toLowerCase().trim())
+        .filter((t) => t.length >= 2)
+        .map((t) => t.slice(0, MAX_TOKEN_LEN)),
+    ),
+  ]
+    .sort((a, b) => b.length - a.length)
+    .slice(0, MAX_TOKENS);
+  if (normalized.length === 0) return [{ text, match: false }];
+  const pattern = new RegExp(`(${normalized.map(escapeRegex).join("|")})`, "gi");
   // split() with a capturing group puts matches at odd indices. Determine
   // match flag from the original index BEFORE dropping empty segments.
   return text

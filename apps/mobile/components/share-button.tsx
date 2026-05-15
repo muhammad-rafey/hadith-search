@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useToast } from "@/components/ui/toast";
 import { hadithShared } from "@/lib/analytics";
-
-const SHARE_BASE = "https://hadithapp.tld/hadith/";
+import { ENV } from "@/lib/env";
 
 /**
  * Share — native OS sheet, clipboard fallback. Mirrors the web's
@@ -25,12 +24,22 @@ export function ShareButton({
 }) {
   const { notify } = useToast();
   const [copied, setCopied] = React.useState(false);
-  const url = `${SHARE_BASE}${encodeURIComponent(hadithId)}`;
+  const copiedTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const url = `${ENV.SHARE_BASE_URL}${encodeURIComponent(hadithId)}`;
+
+  React.useEffect(
+    () => () => {
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    },
+    [],
+  );
 
   const onShare = async () => {
     try {
+      // `title` in the content object is Android-only; iOS uses the
+      // `subject` option instead (React Native Share API).
       const result = await Share.share(
-        Platform.OS === "ios" ? { url, title } : { message: `${title ? `${title}\n` : ""}${url}` },
+        Platform.OS === "ios" ? { url } : { message: `${title ? `${title}\n` : ""}${url}`, title },
         { subject: title },
       );
       if (result.action === Share.sharedAction) {
@@ -43,7 +52,8 @@ export function ShareButton({
     try {
       await Clipboard.setStringAsync(url);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+      copiedTimer.current = setTimeout(() => setCopied(false), 1500);
       hadithShared(hadithId, "link");
       notify({ title: "Link copied", description: "Hadith URL copied to clipboard." });
     } catch {

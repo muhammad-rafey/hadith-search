@@ -28,9 +28,12 @@ export function getSupabase(): SupabaseClient {
  */
 export function isPlaceholderSupabase(): boolean {
   const url = ENV.SUPABASE_URL;
+  const anonKey = ENV.SUPABASE_ANON_KEY;
   return (
     url === "" ||
+    anonKey === "" ||
     url.includes("placeholder.supabase.co") ||
-    url.includes("your-project-ref.supabase.co")
+    url.includes("your-project-ref.supabase.co") ||
+    anonKey.includes("your-anon-key")
   );
 }

@@ -3,6 +3,11 @@ import { View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useUiStore } from "@/lib/store/ui-store";
+import { fontSizeMultiplier } from "@/lib/themes";
+
+// Arabic reads ~10–15% larger than Latin; these are the unscaled base sizes.
+const ARABIC_BASE_FONT = 26;
+const ARABIC_BASE_LINE_HEIGHT = 50;
 
 /**
  * Arabic body — RTL, Amiri font, larger size. Visibility is bound to the
@@ -13,6 +18,8 @@ import { useUiStore } from "@/lib/store/ui-store";
 export function ArabicSection({ text }: { text: string | null }) {
   const showArabic = useUiStore((s) => s.showArabic);
   const setShowArabic = useUiStore((s) => s.setShowArabic);
+  const step = useUiStore((s) => s.fontSize);
+  const scale = fontSizeMultiplier(step);
 
   if (!text) return null;
 
@@ -39,8 +46,8 @@ export function ArabicSection({ text }: { text: string | null }) {
               writingDirection: "rtl",
               textAlign: "right",
               fontFamily: "Amiri-Regular",
-              fontSize: 26,
-              lineHeight: 50,
+              fontSize: Math.round(ARABIC_BASE_FONT * scale),
+              lineHeight: Math.round(ARABIC_BASE_LINE_HEIGHT * scale),
             }}
           >
             {text}

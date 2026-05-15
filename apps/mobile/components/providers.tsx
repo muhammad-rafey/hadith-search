@@ -36,8 +36,21 @@ function useAnonAuthBootstrap() {
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN") {
+        const userId = session?.user?.id;
+        if (userId) identify(userId);
+        return;
+      }
       if (event === "SIGNED_OUT" && !session) {
-        supabase.auth.signInAnonymously().catch(() => {});
+        // Re-arm anonymous auth and re-identify so PostHog's distinct ID
+        // tracks the new anonymous user (analytics continuity).
+        supabase.auth
+          .signInAnonymously()
+          .then(({ data, error }) => {
+            const userId = data.user?.id;
+            if (!error && userId) identify(userId);
+          })
+          .catch(() => {});
       }
     });
 

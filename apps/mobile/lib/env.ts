@@ -10,6 +10,9 @@ export const ENV = {
   POSTHOG_KEY: process.env.EXPO_PUBLIC_POSTHOG_KEY ?? "",
   POSTHOG_HOST: process.env.EXPO_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
   SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN ?? "",
+  // Base for share links. Defaults to the planned canonical web host
+  // (plan/02-web-app.md); override once a production domain is decided.
+  SHARE_BASE_URL: process.env.EXPO_PUBLIC_SHARE_BASE_URL ?? "https://hadithapp.tld/hadith/",
 } as const;
 
 export const HAS_POSTHOG = ENV.POSTHOG_KEY.length > 0;
