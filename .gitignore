@@ -10,6 +10,15 @@ out/
 .turbo/
 *.tsbuildinfo
 
+# Expo / React Native (apps/mobile)
+.expo/
+.expo-shared/
+*.orig.*
+web-build/
+expo-env.d.ts.bak
+apps/mobile/ios/
+apps/mobile/android/
+
 # Environment
 .env
 .env.local
