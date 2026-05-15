@@ -1,10 +1,16 @@
 import type { MetadataRoute } from "next";
-
-const SITE = "https://hadithapp.tld";
+import { getSiteUrl } from "@/lib/site";
 
 export default function robots(): MetadataRoute.Robots {
+  const SITE = getSiteUrl();
   return {
-    rules: [{ userAgent: "*", allow: "/" }],
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: ["/settings", "/bookmarks"],
+      },
+    ],
     sitemap: `${SITE}/sitemap.xml`,
   };
 }

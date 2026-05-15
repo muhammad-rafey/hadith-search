@@ -12,6 +12,7 @@ export function FontSizeControl() {
   const [step, setStep] = React.useState<FontSizeStep>("M");
 
   React.useEffect(() => {
+    if (typeof window === "undefined") return;
     const stored = localStorage.getItem(STORAGE_KEY);
     if (isFontSizeStep(stored)) {
       setStep(stored);
@@ -24,7 +25,9 @@ export function FontSizeControl() {
   const choose = (next: FontSizeStep) => {
     setStep(next);
     applyFontSize(next);
-    localStorage.setItem(STORAGE_KEY, next);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, next);
+    }
     fontSizeChanged(next);
   };
 

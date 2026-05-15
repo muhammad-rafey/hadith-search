@@ -17,6 +17,11 @@ const sentryWebpackPluginOptions = {
   // Local builds without a token still succeed.
   authToken: process.env.SENTRY_AUTH_TOKEN,
   disableLogger: true,
+  telemetry: false,
+  sourcemaps: {
+    // Don't ship source maps to public users — they go to Sentry only.
+    deleteSourcemapsAfterUpload: true,
+  },
 };
 
 export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);

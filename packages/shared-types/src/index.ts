@@ -14,6 +14,8 @@ export const SearchRequestSchema = z.object({
   narrator: z.string().min(1).max(100).optional(),
   language: LanguageSchema.default("en"),
   topK: z.number().int().min(1).max(20).default(10),
+  /** When true, skip cache READ and cache WRITE for this request (Private mode). */
+  skip_cache: z.boolean().optional(),
 });
 export type SearchRequest = z.infer<typeof SearchRequestSchema>;
 
@@ -70,11 +72,30 @@ export const HadithSchema = z.object({
 export type Hadith = z.infer<typeof HadithSchema>;
 
 /**
+ * Lightweight book record used by the Browse UI.
+ * Matches the shape produced by MOCK_BOOKS and the hadiths table projection.
+ */
+export const BookSchema = z.object({
+  book_number: z.number().int().positive(),
+  book_name_en: z.string(),
+});
+export type Book = z.infer<typeof BookSchema>;
+
+/**
  * Feedback request: thumbs up/down on a search result.
+ *
+ * query_hash must be the lowercase hex SHA-256 of the canonical query key
+ * (64 hex chars). This regex enforces that contract and prevents accidental
+ * logging of raw query strings.
+ *
+ * hadith_id length cap is 100 to accommodate real-world IDs such as
+ * "bukhari:7563" without being overly restrictive.
  */
 export const FeedbackRequestSchema = z.object({
-  query_hash: z.string().length(64),
-  hadith_id: z.string(),
+  query_hash: z.string().regex(/^[0-9a-f]{64}$/, {
+    message: "query_hash must be 64 lowercase hex characters (SHA-256)",
+  }),
+  hadith_id: z.string().max(100),
   position: z.number().int().min(0),
   thumb: z.enum(["up", "down"]),
 });

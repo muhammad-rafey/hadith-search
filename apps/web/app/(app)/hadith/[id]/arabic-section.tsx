@@ -2,27 +2,20 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { useUiStore } from "@/lib/store";
 
 interface ArabicSectionProps {
   text: string | null;
 }
 
-const STORAGE_KEY = "hadith-search:show-arabic";
-
 export function ArabicSection({ text }: ArabicSectionProps) {
-  const [show, setShow] = React.useState(true);
-
-  React.useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "0") setShow(false);
-  }, []);
+  const show = useUiStore((s) => s.showArabic);
+  const setShowArabic = useUiStore((s) => s.setShowArabic);
 
   if (!text) return null;
 
   const toggle = () => {
-    const next = !show;
-    setShow(next);
-    localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+    setShowArabic(!show);
   };
 
   return (
@@ -36,22 +29,23 @@ export function ArabicSection({ text }: ArabicSectionProps) {
           size="sm"
           variant="ghost"
           onClick={toggle}
-          aria-pressed={show}
+          aria-expanded={show}
           aria-controls="hadith-arabic-body"
         >
           {show ? "Hide" : "Show"}
         </Button>
       </div>
-      {show ? (
-        <p
-          id="hadith-arabic-body"
-          dir="rtl"
-          lang="ar"
-          className="font-arabic rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))]/40 p-4"
-        >
-          {text}
-        </p>
-      ) : null}
+      {/* Use hidden + aria-hidden so aria-controls always points at a valid element */}
+      <p
+        id="hadith-arabic-body"
+        dir="rtl"
+        lang="ar"
+        hidden={!show}
+        aria-hidden={!show}
+        className="font-arabic rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))]/40 p-4"
+      >
+        {text}
+      </p>
     </section>
   );
 }

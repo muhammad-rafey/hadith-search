@@ -19,6 +19,11 @@ interface UiState {
   // (see plan/03-analytics-monitoring.md).
   privateMode: boolean;
   setPrivateMode: (v: boolean) => void;
+
+  // Controls Arabic text display on the hadith detail page and Settings.
+  // Written by Settings; read by <ArabicSection> — single source of truth.
+  showArabic: boolean;
+  setShowArabic: (v: boolean) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -33,11 +38,20 @@ export const useUiStore = create<UiState>()(
       clearFilters: () => set({ bookFilter: null, narratorFilter: "" }),
       privateMode: false,
       setPrivateMode: (v) => set({ privateMode: v }),
+      showArabic: true,
+      setShowArabic: (v) => set({ showArabic: v }),
     }),
     {
       name: "hadith-search:ui",
+      // createJSONStorage(() => localStorage) is lazy — the thunk is only called
+      // on first hydration, so this is safe at module top level in SSR contexts.
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ privateMode: state.privateMode }),
+      // Only persist user preferences; ephemeral filter state is session-only.
+      partialize: (state) => ({
+        privateMode: state.privateMode,
+        showArabic: state.showArabic,
+      }),
+      version: 1,
     },
   ),
 );

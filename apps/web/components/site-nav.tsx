@@ -34,6 +34,7 @@ export function SiteNav() {
               <Link
                 key={href}
                 href={href}
+                aria-label={label}
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
@@ -42,7 +43,9 @@ export function SiteNav() {
                 )}
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />
-                <span className="hidden sm:inline">{label}</span>
+                <span className="hidden sm:inline" aria-hidden="true">
+                  {label}
+                </span>
               </Link>
             );
           })}

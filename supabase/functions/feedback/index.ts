@@ -6,7 +6,7 @@
 // `FeedbackRequestSchema` contract in packages/shared-types/src/index.ts.
 //
 // POST /functions/v1/feedback with JSON body:
-//   { query_hash: string(64), hadith_id: string, position: number, thumb: "up"|"down" }
+//   { query_hash: string(64 hex), hadith_id: string(max 100), position: number, thumb: "up"|"down" }
 //
 // Response: 204 No Content on success; 400 on bad payload; 500 on insert error.
 //
@@ -14,11 +14,15 @@
 // so signed-in feedback can be deduped per user, but anonymous-JWT feedback
 // is also allowed (Supabase issues anon JWTs to every visitor).
 //
+// Rate limiting: a partial unique index on (user_id, query_hash, hadith_id)
+// is recommended in the DB to prevent duplicate feedback submissions without
+// extra application logic. Add this as a migration (not here).
+//
 // =============================================================================
 
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
+import { handlePreflight, jsonResponse, noContentResponse } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -28,9 +32,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 });
 
 // Mirrors FeedbackRequestSchema in packages/shared-types/src/index.ts.
+// SYNC: keep in sync with packages/shared-types/src/index.ts → FeedbackRequestSchema
+// Fields: query_hash (64 hex), hadith_id (max 100), position, thumb
 const FeedbackRequestSchema = z.object({
-  query_hash: z.string().length(64),
-  hadith_id: z.string().min(1).max(64),
+  query_hash: z.string().regex(/^[0-9a-f]{64}$/, {
+    message: "query_hash must be 64 lowercase hex characters (SHA-256)",
+  }),
+  hadith_id: z.string().max(100),
   position: z.number().int().min(0),
   thumb: z.enum(["up", "down"]),
 });
@@ -85,13 +93,6 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "insert failed" }, { status: 500 });
   }
 
-  // 204 No Content per spec.
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-    },
-  });
+  // 204 No Content per spec — use shared noContentResponse() for CORS consistency.
+  return noContentResponse();
 });
