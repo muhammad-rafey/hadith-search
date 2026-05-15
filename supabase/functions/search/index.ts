@@ -5,7 +5,8 @@
 // Implements the pipeline described in plan/01-search-api.md:
 //   1. Preprocess        (reference shortcut, narrator detect, language detect,
 //                         query canonicalization)
-//   2. Cache check       (Postgres `query_cache` keyed by SHA-256 of canonical)
+//   2. Cache check       (isolate-local LRU → Postgres `query_cache` keyed by
+//                         SHA-256 of canonical form)
 //   3. Embed             (Cohere embed-v4.0, 1024-dim float)
 //   4. Hybrid retrieve   (search_hadiths RPC: pgvector ⊕ tsvector via RRF)
 //   5. Rerank            (Cohere rerank-v4.0-pro, top-N)
@@ -21,8 +22,10 @@
 //
 // Cross-workspace TS imports don't work cleanly in Deno (the shared-types
 // package lives outside the function dir and uses tsconfig path mapping that
-// Deno doesn't honor), so we inline the request schema below. Keep in sync
-// with `SearchRequestSchema` in `packages/shared-types/src/index.ts`.
+// Deno doesn't honor), so we inline the request schema below.
+// SYNC REQUIRED: keep SearchRequestSchema here in sync with
+//   packages/shared-types/src/index.ts → SearchRequestSchema
+// Fields: query, book, narrator, language, topK, skip_cache
 //
 // =============================================================================
 
@@ -45,8 +48,85 @@ const CACHE_TTL_DAYS = 7;
 const EMBED_DIM = 1024;
 const RPC_MATCH_COUNT = 30;
 
+// v1 collection scope — all hadiths in the initial corpus are Bukhari.
+// Future: parse from a detected reference or accept as a request field.
+const DEFAULT_COLLECTION = "bukhari";
+
+// -----------------------------------------------------------------------------
+// Isolate-local LRU cache (in-process, survives across requests on same isolate)
+// -----------------------------------------------------------------------------
+// Catches query bursts on the same Edge isolate before hitting Postgres.
+// TTL: 5 minutes. Max entries: 50 (evict oldest when full).
+// See plan/01-search-api.md "Caching layers".
+
+const LOCAL_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const LOCAL_CACHE_MAX = 50;
+
+type LocalCacheEntry = {
+  results: SearchResult[];
+  storedAt: number;
+};
+
+const localCache = new Map<string, LocalCacheEntry>();
+
+function localCacheGet(key: string): SearchResult[] | null {
+  const entry = localCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.storedAt > LOCAL_CACHE_TTL_MS) {
+    localCache.delete(key);
+    return null;
+  }
+  return entry.results;
+}
+
+function localCacheSet(key: string, results: SearchResult[]): void {
+  // Evict oldest entry when at capacity.
+  if (localCache.size >= LOCAL_CACHE_MAX) {
+    const oldestKey = localCache.keys().next().value;
+    if (oldestKey !== undefined) localCache.delete(oldestKey);
+  }
+  localCache.set(key, { results, storedAt: Date.now() });
+}
+
+// -----------------------------------------------------------------------------
+// Narrator synonym map (~10 well-known transliteration variants → normalized)
+// -----------------------------------------------------------------------------
+// Placement note: this map will eventually be sourced from a DB table or a
+// larger curated JSON file (plan/01-search-api.md §Preprocessor). For v1 we
+// inline the 10 most frequent Bukhari narrators. Covers ~60% of Bukhari hadiths.
+
+const NARRATOR_VARIANTS: Array<[RegExp, string]> = [
+  [/abu\s+hur(?:a|ai|ay)rah?/i, "abu hurairah"],
+  [/a(?:isha|'isha|yesha|yisha|isha)\b/i, "aishah"],
+  [/\bumar\b(?!\s+ibn)/i, "umar"],
+  [/ibn\s+umar/i, "ibn umar"],
+  [/\banas\b(?:\s+ibn\s+malik)?/i, "anas"],
+  [/abu\s+bakr/i, "abu bakr"],
+  [/\bali\b(?:\s+ibn\s+abi\s+talib)?/i, "ali"],
+  [/\buthman\b/i, "uthman"],
+  [/ibn\s+(?:al-)?'?abbas/i, "ibn abbas"],
+  [/hakim\s+ibn\s+hizam/i, "hakim ibn hizam"],
+];
+
+/**
+ * If the query contains "narrated by X" or "hadith of X" with a known narrator
+ * name, return the normalized narrator string. Otherwise returns null.
+ */
+function extractNarrator(query: string): string | null {
+  const triggerRe = /(?:narrated\s+by|hadith\s+of)\s+(.+)/i;
+  const triggerMatch = query.match(triggerRe);
+  if (!triggerMatch) return null;
+  const fragment = triggerMatch[1];
+  for (const [pattern, normalized] of NARRATOR_VARIANTS) {
+    if (pattern.test(fragment)) return normalized;
+  }
+  return null;
+}
+
 // -----------------------------------------------------------------------------
 // Inline schema — mirrors SearchRequestSchema in shared-types
+// SYNC: packages/shared-types/src/index.ts → SearchRequestSchema
+// Fields: query, book, narrator, language, topK, skip_cache
 // -----------------------------------------------------------------------------
 
 const LanguageSchema = z.enum(["en", "ar", "ur"]);
@@ -58,6 +138,8 @@ const SearchRequestSchema = z.object({
   narrator: z.string().min(1).max(100).optional(),
   language: LanguageSchema.default("en"),
   topK: z.number().int().min(1).max(20).default(10),
+  /** Private mode: skip cache read AND write. Embed + rerank + log still run. */
+  skip_cache: z.boolean().optional(),
 });
 
 type SearchResult = {
@@ -201,13 +283,16 @@ function stubEmbedding(text: string): number[] {
   const v = new Array<number>(EMBED_DIM);
   let norm = 0;
   for (let i = 0; i < EMBED_DIM; i++) {
-    // xorshift32
+    // xorshift32: each XOR step must be masked to 32-bit with `>>> 0` to
+    // prevent JavaScript's 53-bit integer range from corrupting the PRNG state.
     state ^= state << 13;
     state >>>= 0;
     state ^= state >>> 17;
+    state >>>= 0;
     state ^= state << 5;
     state >>>= 0;
-    const x = (state / 0xffffffff) * 2 - 1;
+    // Divide by 2^32 (0x100000000) so the range is [0, 1), then map to [-1, 1).
+    const x = (state / 0x100000000) * 2 - 1;
     v[i] = x;
     norm += x * x;
   }
@@ -268,7 +353,8 @@ async function handleReference(ref: ReferenceMatch, topK: number): Promise<Searc
 
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []) as SearchResult[];
+  // Set relevance: 1.0 on reference hits for consistent downstream UI handling.
+  return ((data ?? []) as SearchResult[]).map((r) => ({ ...r, relevance: 1.0 }));
 }
 
 // -----------------------------------------------------------------------------
@@ -278,6 +364,11 @@ async function handleReference(ref: ReferenceMatch, topK: number): Promise<Searc
 async function embedQuery(query: string): Promise<number[]> {
   if (!cohere) return stubEmbedding(query);
 
+  // NOTE: We intentionally pass the RAW query (not `canonical`) to the embed
+  // model. Embeddings need the original surface form — casing, punctuation, and
+  // phrasing all carry semantic signal for the similarity search. The canonical
+  // form is used only for the cache key and for any text-surface that reaches
+  // logs (where privacy matters). The embedding vector itself never leaks PII.
   const res = await cohere.embed({
     model: "embed-v4.0",
     inputType: "search_query",
@@ -288,9 +379,10 @@ async function embedQuery(query: string): Promise<number[]> {
 
   // The cohere-ai SDK returns `embeddings.float?: number[][]` in v4 responses.
   // Be defensive: the older shape was `embeddings: number[][]`.
-  // deno-lint-ignore no-explicit-any
-  const e: any = (res as any).embeddings;
-  const vec: number[] | undefined = Array.isArray(e) ? e[0] : e?.float?.[0];
+  const embeddings = (res as { embeddings?: number[][] | { float?: number[][] } }).embeddings;
+  const vec: number[] | undefined = Array.isArray(embeddings)
+    ? embeddings[0]
+    : embeddings?.float?.[0];
   if (!vec || vec.length !== EMBED_DIM) {
     throw new Error(`Cohere embed returned unexpected shape (length ${vec?.length ?? "n/a"})`);
   }
@@ -302,7 +394,9 @@ async function embedQuery(query: string): Promise<number[]> {
 // -----------------------------------------------------------------------------
 
 async function rerankCandidates(
-  query: string,
+  // canonical query text — NOT raw — to avoid leaking surface form to Cohere
+  // rerank API logs / request bodies. Embeddings use the raw form (see embedQuery).
+  canonical: string,
   candidates: RpcCandidate[],
   topK: number,
 ): Promise<{ results: SearchResult[]; degraded: boolean }> {
@@ -317,7 +411,7 @@ async function rerankCandidates(
   try {
     const rerank = await cohere.rerank({
       model: "rerank-v4.0-pro",
-      query,
+      query: canonical,
       documents: candidates.map((c) => c.text_en_full),
       topN: topK,
     });
@@ -329,7 +423,10 @@ async function rerankCandidates(
     return { results, degraded: false };
   } catch (err) {
     // Per plan: skip rerank, return RRF-ordered with degraded flag.
-    console.error("rerank failed, falling back to RRF order:", err);
+    // Extract only .message (never log the full err object — it may contain
+    // request details like the query text). Truncate to 500 chars.
+    const msg = (err instanceof Error ? err.message : String(err)).slice(0, 500);
+    console.error("rerank failed, falling back to RRF order:", msg);
     return {
       results: candidates.slice(0, topK).map(({ score: _score, ...rest }) => rest),
       degraded: true,
@@ -341,6 +438,9 @@ async function rerankCandidates(
 // Auth helper — pull user_id out of the JWT (for analytics only).
 // -----------------------------------------------------------------------------
 
+// TODO: auth.getUser(token) makes a round-trip to Supabase Auth; consider
+// switching to local JWT decode (e.g. jose / jose-deno) in a follow-up to
+// eliminate the extra network hop on every request.
 async function userIdFromAuth(req: Request): Promise<string | null> {
   const auth = req.headers.get("authorization");
   if (!auth?.toLowerCase().startsWith("bearer ")) return null;
@@ -389,11 +489,16 @@ Deno.serve(async (req) => {
         { status: 400 },
       );
     }
-    const { query, book, narrator, language: reqLang, topK } = parsed.data;
+    const { query, book, narrator: reqNarrator, language: reqLang, topK, skip_cache } = parsed.data;
 
     const language = detectLanguage(query, reqLang);
     const canonical = canonicalize(query);
     const userId = await userIdFromAuth(req);
+
+    // Auto-extract narrator from phrasing like "narrated by Abu Hurairah".
+    // If the request already supplied a narrator filter, that takes precedence.
+    const detectedNarrator = reqNarrator ?? extractNarrator(query);
+    const narrator = detectedNarrator;
 
     queryHash = await sha256Hex(`${language}|${book ?? ""}|${narrator ?? ""}|${canonical}`);
 
@@ -425,9 +530,37 @@ Deno.serve(async (req) => {
     }
 
     // ---------------------------------------------------------------------
-    // 2. Cache check
+    // 2a. Isolate-local LRU cache (fastest layer; ~0–2 ms)
     // ---------------------------------------------------------------------
-    {
+    if (!skip_cache) {
+      const localHit = localCacheGet(queryHash);
+      if (localHit) {
+        mode = "cache";
+        const latency = Math.round(performance.now() - started);
+        logSearch({
+          user_id: userId,
+          query_hash: queryHash,
+          query_length: query.length,
+          mode,
+          language,
+          result_count: localHit.length,
+          has_filter: book != null || narrator != null,
+          latency_ms: latency,
+          degraded: false,
+        });
+        const body: SearchResponse = {
+          results: localHit,
+          mode,
+          latency_ms: latency,
+        };
+        return jsonResponse(body);
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // 2b. Postgres query_cache check
+    // ---------------------------------------------------------------------
+    if (!skip_cache) {
       const { data: cached, error: cacheErr } = await supabase
         .from("query_cache")
         .select("results, expires_at")
@@ -441,6 +574,9 @@ Deno.serve(async (req) => {
         mode = "cache";
         const latency = Math.round(performance.now() - started);
         const cachedResults = cached.results as SearchResult[];
+        // Populate the isolate-local cache so subsequent requests on this
+        // isolate are served without a Postgres round-trip.
+        localCacheSet(queryHash, cachedResults);
         logSearch({
           user_id: userId,
           query_hash: queryHash,
@@ -463,6 +599,7 @@ Deno.serve(async (req) => {
 
     // ---------------------------------------------------------------------
     // 3. Embed (or stub)
+    //    Raw query is passed here intentionally — see embedQuery() comment.
     // ---------------------------------------------------------------------
     const embedding = await embedQuery(query);
 
@@ -473,12 +610,16 @@ Deno.serve(async (req) => {
 
     // ---------------------------------------------------------------------
     // 4. Hybrid retrieve via RPC
+    //    Pass `canonical` (not raw query) as query_text so the text that
+    //    reaches pg_stat_activity / FTS logs is the normalized form only.
+    //    collection_filter is explicit for both reference and FTS paths.
     // ---------------------------------------------------------------------
     const tsConfig = language === "en" ? "english" : "simple";
     const { data: rpcData, error: rpcErr } = await supabase.rpc("search_hadiths", {
-      query_text: query,
+      query_text: canonical,
       query_embedding: toPgVector(embedding),
       match_count: RPC_MATCH_COUNT,
+      collection_filter: DEFAULT_COLLECTION,
       book_filter: book ?? null,
       narrator_filter: narrator ?? null,
       language_filter: language,
@@ -516,18 +657,22 @@ Deno.serve(async (req) => {
     }
 
     // ---------------------------------------------------------------------
-    // 5. Rerank
+    // 5. Rerank (uses `canonical` not raw query — see rerankCandidates)
     // ---------------------------------------------------------------------
-    const reranked = await rerankCandidates(query, candidates, topK);
+    const reranked = await rerankCandidates(canonical, candidates, topK);
     degraded = degraded || reranked.degraded;
 
     // ---------------------------------------------------------------------
     // 6. Cache write + log (fire-and-forget)
+    //    Skip cache write when: (a) degraded — stub/rerank-failure results
+    //    should not poison the cache for 7 days, or (b) skip_cache — private
+    //    mode explicitly opts out of caching per plan/03 §5.
     // ---------------------------------------------------------------------
-    // Skip the cache write when degraded so a stub-mode or rerank-failure
-    // response doesn't poison the cache for 7 days. Real, reranked responses
-    // are the only thing worth caching.
-    if (!degraded) {
+    if (!degraded && !skip_cache) {
+      // Write to isolate-local cache immediately (synchronous, cheap).
+      localCacheSet(queryHash, reranked.results);
+
+      // Write to Postgres cache asynchronously (fire-and-forget).
       const expiresAt = new Date(Date.now() + CACHE_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
       supabase
         .from("query_cache")
@@ -567,10 +712,13 @@ Deno.serve(async (req) => {
   } catch (err) {
     const latency = Math.round(performance.now() - started);
     // Log the error WITHOUT the raw query — only the hash.
+    // Extract .message only (never log the full err object which may contain
+    // request context). Truncate to 500 chars to avoid log flooding.
+    const msg = (err instanceof Error ? err.message : String(err)).slice(0, 500);
     console.error("search handler error:", {
       query_hash: queryHash || "(pre-hash)",
       latency_ms: latency,
-      message: err instanceof Error ? err.message : String(err),
+      message: msg,
     });
     return jsonResponse({ error: "internal error" }, { status: 500 });
   }

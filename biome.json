@@ -23,10 +23,10 @@
     "rules": {
       "recommended": true,
       "style": {
-        "useImportType": "warn"
+        "useImportType": "error"
       },
       "suspicious": {
-        "noExplicitAny": "warn"
+        "noExplicitAny": "error"
       }
     }
   },

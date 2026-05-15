@@ -1,4 +1,4 @@
-import type { Hadith } from "./index";
+import type { Book, Hadith } from "./index";
 
 /**
  * 10 sample hadiths from Sahih al-Bukhari for local development.
@@ -239,9 +239,10 @@ export const MOCK_HADITHS: Hadith[] = [
 
 /**
  * The 10 sample books referenced by the mock hadiths above. Used for the
- * Browse UI before the real corpus arrives.
+ * Browse UI before the real corpus arrives. Typed as Book[] to satisfy
+ * BookSchema from shared-types.
  */
-export const MOCK_BOOKS = Array.from(
+export const MOCK_BOOKS: Book[] = Array.from(
   new Map(
     MOCK_HADITHS.map((h) => [
       h.book_number,

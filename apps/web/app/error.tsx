@@ -9,7 +9,12 @@ interface ErrorProps {
   reset: () => void;
 }
 
-export default function GlobalError({ error, reset }: ErrorProps) {
+/**
+ * Segment-level error boundary. Renders only the inner UI — no <html>/<body>
+ * wrappers, those come from the root layout. For the root-layout-level case
+ * see app/global-error.tsx.
+ */
+export default function ErrorBoundary({ error, reset }: ErrorProps) {
   React.useEffect(() => {
     Sentry.captureException(error);
   }, [error]);

@@ -3,8 +3,10 @@
 // =============================================================================
 //
 // v1: open `*` origin so the web app + curl + the uptime canary all work
-// without per-request configuration. Tighten in production once the web app's
-// origin is known (see plan/01-search-api.md "Verification").
+// without per-request configuration.
+// TODO §6.2 (plan/01-search-api.md): tighten CORS `*` to the production web
+// app origin once the domain is known and DNS is confirmed. Replace `*` with
+// the explicit allow-list and add a dynamic origin-check helper.
 //
 // =============================================================================
 
@@ -34,4 +36,12 @@ export function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   for (const [k, v] of Object.entries(corsHeaders)) headers.set(k, v);
   headers.set("content-type", "application/json; charset=utf-8");
   return new Response(JSON.stringify(body), { ...init, headers });
+}
+
+/**
+ * Returns a 204 No Content response with CORS headers.
+ * Use for successful mutations that return no body (e.g. feedback endpoint).
+ */
+export function noContentResponse(): Response {
+  return new Response(null, { status: 204, headers: corsHeaders });
 }

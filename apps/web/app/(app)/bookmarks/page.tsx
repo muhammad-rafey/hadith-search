@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBookmarks } from "@/lib/queries/use-bookmarks";
 import { getHadithById } from "@/lib/hadiths";
+import type { Hadith } from "@hadith/shared-types";
 
 export default function BookmarksPage() {
   const [mounted, setMounted] = React.useState(false);
@@ -23,7 +24,7 @@ export default function BookmarksPage() {
     );
   }
 
-  const items = ids.map((id) => getHadithById(id)).filter((x): x is NonNullable<typeof x> => !!x);
+  const items = ids.map((id) => getHadithById(id)).filter((h): h is Hadith => h !== null);
 
   return (
     <div className="space-y-6">

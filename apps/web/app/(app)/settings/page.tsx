@@ -9,18 +9,13 @@ import { THEMES, isTheme, type Theme } from "@/lib/themes";
 import { privateModeToggled, themeChanged } from "@/lib/analytics";
 import { useUiStore } from "@/lib/store";
 
-const ARABIC_KEY = "hadith-search:show-arabic";
-
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
-  const [showArabic, setShowArabic] = React.useState(true);
-  React.useEffect(() => {
-    const stored = localStorage.getItem(ARABIC_KEY);
-    if (stored === "0") setShowArabic(false);
-  }, []);
+  const showArabic = useUiStore((s) => s.showArabic);
+  const setShowArabic = useUiStore((s) => s.setShowArabic);
 
   const privateMode = useUiStore((s) => s.privateMode);
   const setPrivateMode = useUiStore((s) => s.setPrivateMode);
@@ -33,9 +28,7 @@ export default function SettingsPage() {
   };
 
   const onArabicToggle = () => {
-    const next = !showArabic;
-    setShowArabic(next);
-    localStorage.setItem(ARABIC_KEY, next ? "1" : "0");
+    setShowArabic(!showArabic);
   };
 
   const onPrivateToggle = () => {
