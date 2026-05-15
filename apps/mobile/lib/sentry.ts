@@ -25,10 +25,10 @@ export function initSentry(): void {
   }
 }
 
-export function captureException(error: unknown): void {
+export function captureException(error: unknown, extra?: Record<string, unknown>): void {
   if (!HAS_SENTRY || !initialized) return;
   try {
-    Sentry.captureException(error);
+    Sentry.captureException(error, extra ? { extra } : undefined);
   } catch {
     // ignore
   }

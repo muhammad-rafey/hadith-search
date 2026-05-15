@@ -18,7 +18,7 @@ export interface PressableProps extends RNPressableProps {
  * are best-effort: failures (web, locked-down devices) are swallowed.
  */
 export const Pressable = React.forwardRef<View, PressableProps>(
-  ({ className, haptic, onPress, disabled, ...rest }, ref) => {
+  ({ className, haptic, onPress, disabled, style, ...rest }, ref) => {
     return (
       <RNPressable
         ref={ref}
@@ -29,7 +29,12 @@ export const Pressable = React.forwardRef<View, PressableProps>(
           }
           onPress?.(e);
         }}
-        style={({ pressed }) => [{ opacity: disabled ? 0.5 : pressed ? 0.6 : 1 }]}
+        // Compose our opacity with any caller-provided style instead of
+        // letting the spread clobber it.
+        style={(state) => [
+          { opacity: disabled ? 0.5 : state.pressed ? 0.6 : 1 },
+          typeof style === "function" ? style(state) : style,
+        ]}
         className={className}
         {...rest}
       />

@@ -96,11 +96,14 @@ function ToastRow({ item, onDone }: { item: ToastItem; onDone: () => void }) {
         toValue: 0,
         duration: 180,
         useNativeDriver: true,
-      }).start(() => onDone());
+      }).start(() => {
+        if (!cancelled) onDone();
+      });
     }, DURATION_MS);
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      progress.stopAnimation();
     };
   }, [progress, onDone]);
 

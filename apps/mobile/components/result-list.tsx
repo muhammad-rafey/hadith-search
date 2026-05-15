@@ -83,6 +83,18 @@ export function ResultList({
     return <EmptyState title="No matches." description="Try different words or remove a filter." />;
   }, [loading, error, hasQuery]);
 
+  const renderItem = React.useCallback(
+    ({ item, index }: { item: SearchResult; index: number }) => (
+      <HadithCard
+        result={item}
+        position={index}
+        queryTokens={queryTokens}
+        onPress={onResultPress}
+      />
+    ),
+    [queryTokens, onResultPress],
+  );
+
   return (
     <FlatList
       data={data}
@@ -101,21 +113,19 @@ export function ResultList({
             </View>
           ) : null}
           {!loading && !error && data.length > 0 ? (
-            <Text size="xs" className="text-muted-foreground" accessibilityRole="summary">
+            <Text
+              size="xs"
+              className="text-muted-foreground"
+              accessibilityRole="text"
+              accessibilityLiveRegion="polite"
+            >
               {data.length} result{data.length === 1 ? "" : "s"}.
             </Text>
           ) : null}
         </View>
       }
       ListEmptyComponent={empty}
-      renderItem={({ item, index }) => (
-        <HadithCard
-          result={item}
-          position={index}
-          queryTokens={queryTokens}
-          onPress={onResultPress}
-        />
-      )}
+      renderItem={renderItem}
       removeClippedSubviews
       windowSize={7}
       initialNumToRender={8}

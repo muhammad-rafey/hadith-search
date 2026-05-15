@@ -69,8 +69,11 @@ export const useUiStore = create<UiState>()(
         fontSize: state.fontSize,
         showArabic: state.showArabic,
       }),
-      onRehydrateStorage: () => (state) => {
-        state?.setHydrated(true);
+      // (state, error): on a read failure `state` is undefined — still flip
+      // `hydrated` via the store ref so consumers don't wait forever.
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) console.warn("[ui-store] rehydrate failed", error);
+        useUiStore.getState().setHydrated(true);
       },
     },
   ),

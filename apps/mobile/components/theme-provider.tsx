@@ -33,9 +33,13 @@ const useThemeStore = create<ThemeStore>()(
       name: "hadith-search:theme",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({ theme: s.theme }),
-      onRehydrateStorage: () => (state) => {
+      // Note the (state, error) signature: on a storage read failure `state`
+      // is undefined — still flip `hydrated` so the UI never hangs on the
+      // fallback theme forever.
+      onRehydrateStorage: () => (state, error) => {
         if (state && !isTheme(state.theme)) state.theme = "light";
-        state?.setHydrated(true);
+        if (error) console.warn("[theme] rehydrate failed", error);
+        useThemeStore.getState().setHydrated(true);
       },
     },
   ),
@@ -72,6 +76,7 @@ export function useTheme(): ThemeContextValue {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
+  const hydrated = useThemeStore((s) => s.hydrated);
 
   const value = React.useMemo<ThemeContextValue>(
     () => ({
@@ -85,7 +90,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={value}>
       <View style={THEME_VARS[theme]} className="flex-1 bg-background">
-        {children}
+        {/* Hold content until the persisted theme is read, otherwise a
+            dark/sepia user gets a white flash on every cold start. */}
+        {hydrated ? children : null}
       </View>
     </ThemeContext.Provider>
   );

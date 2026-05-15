@@ -29,5 +29,6 @@ export function Icon({
   color?: string;
 }) {
   const { theme } = useTheme();
-  return <Cmp size={size} color={color ?? hsl(theme, token)} />;
+  const resolved = React.useMemo(() => color ?? hsl(theme, token), [color, theme, token]);
+  return <Cmp size={size} color={resolved} />;
 }

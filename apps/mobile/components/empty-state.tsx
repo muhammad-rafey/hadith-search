@@ -25,7 +25,7 @@ export function EmptyState({
 }) {
   return (
     <View
-      accessibilityRole={tone === "error" ? "alert" : "summary"}
+      accessibilityRole={tone === "error" ? "alert" : undefined}
       className={cn(
         "rounded-md border p-6",
         tone === "error" ? "border-destructive bg-destructive/10" : "border-dashed border-border",

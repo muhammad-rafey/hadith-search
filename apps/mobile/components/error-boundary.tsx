@@ -20,8 +20,8 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     return { error };
   }
 
-  override componentDidCatch(error: Error) {
-    captureException(error);
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    captureException(error, { componentStack: errorInfo.componentStack });
   }
 
   reset = () => this.setState({ error: null });

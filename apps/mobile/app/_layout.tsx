@@ -5,12 +5,16 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import * as React from "react";
+import { I18nManager } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Providers } from "@/components/providers";
 import { initSentry } from "@/lib/sentry";
 
+// Force LTR globally; Arabic is handled per-element with writingDirection:"rtl"
+// (plan/02-web-app.md — never globally mirror the layout).
+I18nManager.allowRTL(false);
 initSentry();
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
