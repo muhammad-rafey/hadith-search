@@ -73,8 +73,7 @@ export const MOCK_HADITHS: Hadith[] = [
       "Allah's Messenger said: The prayer of any one of you who breaks his ablution is not accepted until he performs ablution again.",
     text_en_full:
       "Narrated Abu Hurairah: Allah's Messenger said: The prayer of any one of you who breaks his ablution is not accepted until he performs ablution again.",
-    text_ar:
-      "لا تقبل صلاة من أحدث حتى يتوضأ",
+    text_ar: "لا تقبل صلاة من أحدث حتى يتوضأ",
     grades: [{ grader: "Sahih al-Bukhari", grade: "Sahih" }],
     urn: 196,
     language: "en",
@@ -96,8 +95,7 @@ export const MOCK_HADITHS: Hadith[] = [
       "Allah's Messenger said: Fasting is a shield (or a screen or a shelter from the Hell-Fire). So, the person observing the fast should avoid sexual relations with his wife and should not behave foolishly and impudently, and if somebody fights with him or abuses him, he should tell him twice, 'I am fasting.'",
     text_en_full:
       "Narrated Abu Hurairah: Allah's Messenger said: Fasting is a shield (or a screen or a shelter from the Hell-Fire). So, the person observing the fast should avoid sexual relations with his wife and should not behave foolishly and impudently, and if somebody fights with him or abuses him, he should tell him twice, 'I am fasting.'",
-    text_ar:
-      "الصيام جنة فلا يرفث ولا يجهل وإن امرؤ قاتله أو شاتمه فليقل إني صائم مرتين",
+    text_ar: "الصيام جنة فلا يرفث ولا يجهل وإن امرؤ قاتله أو شاتمه فليقل إني صائم مرتين",
     grades: [{ grader: "Sahih al-Bukhari", grade: "Sahih" }],
     urn: 2202,
     language: "en",
@@ -141,8 +139,7 @@ export const MOCK_HADITHS: Hadith[] = [
       "Allah's Messenger said: A Muslim is a brother of another Muslim, so he should not oppress him, nor should he hand him over to an oppressor. Whoever fulfilled the needs of his brother, Allah will fulfill his needs.",
     text_en_full:
       "Narrated Ibn Umar: Allah's Messenger said: A Muslim is a brother of another Muslim, so he should not oppress him, nor should he hand him over to an oppressor. Whoever fulfilled the needs of his brother, Allah will fulfill his needs.",
-    text_ar:
-      "المسلم أخو المسلم لا يظلمه ولا يسلمه ومن كان في حاجة أخيه كان الله في حاجته",
+    text_ar: "المسلم أخو المسلم لا يظلمه ولا يسلمه ومن كان في حاجة أخيه كان الله في حاجته",
     grades: [{ grader: "Sahih al-Bukhari", grade: "Sahih" }],
     urn: 2761,
     language: "en",

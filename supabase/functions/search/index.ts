@@ -37,10 +37,8 @@ import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 
 const COHERE_API_KEY = Deno.env.get("COHERE_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const SUPABASE_SERVICE_ROLE_KEY =
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const RERANK_DISABLED =
-  (Deno.env.get("RERANK_DISABLED") ?? "false").toLowerCase() === "true";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const RERANK_DISABLED = (Deno.env.get("RERANK_DISABLED") ?? "false").toLowerCase() === "true";
 
 const HAS_COHERE = COHERE_API_KEY.length > 0;
 const CACHE_TTL_DAYS = 7;
@@ -95,9 +93,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-const cohere = HAS_COHERE
-  ? new CohereClient({ token: COHERE_API_KEY })
-  : null;
+const cohere = HAS_COHERE ? new CohereClient({ token: COHERE_API_KEY }) : null;
 
 // -----------------------------------------------------------------------------
 // Helpers
@@ -121,10 +117,7 @@ function canonicalize(q: string): string {
 
 /** SHA-256 hex of a UTF-8 string. */
 async function sha256Hex(s: string): Promise<string> {
-  const buf = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(s),
-  );
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
@@ -259,10 +252,7 @@ function logSearch(row: {
 // Reference shortcut handler
 // -----------------------------------------------------------------------------
 
-async function handleReference(
-  ref: ReferenceMatch,
-  topK: number,
-): Promise<SearchResult[]> {
+async function handleReference(ref: ReferenceMatch, topK: number): Promise<SearchResult[]> {
   const cols =
     "id, hadith_number, book_number, book_name_en, chapter_title_en, in_book_ref, usc_msa_ref, narrator, text_en_full, text_ar";
 
@@ -271,9 +261,7 @@ async function handleReference(
   if (ref.kind === "id") {
     q = q.eq("collection", ref.collection).eq("hadith_number", ref.hadith_number);
   } else if (ref.kind === "book_hadith") {
-    q = q
-      .eq("book_number", ref.book_number)
-      .eq("hadith_number", ref.hadith_number);
+    q = q.eq("book_number", ref.book_number).eq("hadith_number", ref.hadith_number);
   } else {
     q = q.eq("usc_msa_ref", ref.usc_msa_ref);
   }
@@ -304,9 +292,7 @@ async function embedQuery(query: string): Promise<number[]> {
   const e: any = (res as any).embeddings;
   const vec: number[] | undefined = Array.isArray(e) ? e[0] : e?.float?.[0];
   if (!vec || vec.length !== EMBED_DIM) {
-    throw new Error(
-      `Cohere embed returned unexpected shape (length ${vec?.length ?? "n/a"})`,
-    );
+    throw new Error(`Cohere embed returned unexpected shape (length ${vec?.length ?? "n/a"})`);
   }
   return vec;
 }
@@ -409,9 +395,7 @@ Deno.serve(async (req) => {
     const canonical = canonicalize(query);
     const userId = await userIdFromAuth(req);
 
-    queryHash = await sha256Hex(
-      `${language}|${book ?? ""}|${narrator ?? ""}|${canonical}`,
-    );
+    queryHash = await sha256Hex(`${language}|${book ?? ""}|${narrator ?? ""}|${canonical}`);
 
     // ---------------------------------------------------------------------
     // 1. Reference shortcut
@@ -491,18 +475,15 @@ Deno.serve(async (req) => {
     // 4. Hybrid retrieve via RPC
     // ---------------------------------------------------------------------
     const tsConfig = language === "en" ? "english" : "simple";
-    const { data: rpcData, error: rpcErr } = await supabase.rpc(
-      "search_hadiths",
-      {
-        query_text: query,
-        query_embedding: toPgVector(embedding),
-        match_count: RPC_MATCH_COUNT,
-        book_filter: book ?? null,
-        narrator_filter: narrator ?? null,
-        language_filter: language,
-        ts_config: tsConfig,
-      },
-    );
+    const { data: rpcData, error: rpcErr } = await supabase.rpc("search_hadiths", {
+      query_text: query,
+      query_embedding: toPgVector(embedding),
+      match_count: RPC_MATCH_COUNT,
+      book_filter: book ?? null,
+      narrator_filter: narrator ?? null,
+      language_filter: language,
+      ts_config: tsConfig,
+    });
 
     if (rpcErr) {
       console.error("search_hadiths RPC failed:", rpcErr.message);
@@ -547,9 +528,7 @@ Deno.serve(async (req) => {
     // response doesn't poison the cache for 7 days. Real, reranked responses
     // are the only thing worth caching.
     if (!degraded) {
-      const expiresAt = new Date(
-        Date.now() + CACHE_TTL_DAYS * 24 * 60 * 60 * 1000,
-      ).toISOString();
+      const expiresAt = new Date(Date.now() + CACHE_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
       supabase
         .from("query_cache")
         .upsert(
@@ -593,9 +572,6 @@ Deno.serve(async (req) => {
       latency_ms: latency,
       message: err instanceof Error ? err.message : String(err),
     });
-    return jsonResponse(
-      { error: "internal error" },
-      { status: 500 },
-    );
+    return jsonResponse({ error: "internal error" }, { status: 500 });
   }
 });

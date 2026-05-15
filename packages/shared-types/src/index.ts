@@ -63,9 +63,7 @@ export const HadithSchema = z.object({
   text_en: z.string(),
   text_en_full: z.string(),
   text_ar: z.string().nullable(),
-  grades: z
-    .array(z.object({ grader: z.string(), grade: z.string() }))
-    .nullable(),
+  grades: z.array(z.object({ grader: z.string(), grade: z.string() })).nullable(),
   urn: z.number().int().nullable(),
   language: LanguageSchema,
 });
