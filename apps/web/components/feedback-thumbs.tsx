@@ -3,7 +3,7 @@
 import * as React from "react";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { apiFetch } from "@/lib/api";
 import { searchFeedbackGiven } from "@/lib/analytics";
 
 type FeedbackState = "none" | "up" | "down" | "submitting";
@@ -39,14 +39,14 @@ export function FeedbackThumbs({ queryHash, hadithId, position }: FeedbackThumbs
     searchFeedbackGiven({ query_hash: queryHash, hadith_id: hadithId, position, thumb });
 
     try {
-      const supabase = getSupabaseBrowserClient();
-      await supabase.functions.invoke("feedback", {
-        body: {
+      await apiFetch("/api/feedback", {
+        method: "POST",
+        body: JSON.stringify({
           query_hash: queryHash,
           hadith_id: hadithId,
           position,
           thumb,
-        },
+        }),
       });
     } catch {
       // Silently swallow network errors — feedback is best-effort and

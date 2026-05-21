@@ -8,7 +8,7 @@ export const contentType = "image/png";
 
 export default async function OgImage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const h = getHadithById(decodeURIComponent(id));
+  const h = await getHadithById(decodeURIComponent(id));
   const siteHost = getSiteUrl().replace(/^https?:\/\//, "");
 
   return new ImageResponse(

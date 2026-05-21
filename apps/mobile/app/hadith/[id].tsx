@@ -1,6 +1,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as React from "react";
-import { ScrollView, View } from "react-native";
+import { ActivityIndicator, ScrollView, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 import { ArabicSection } from "@/components/arabic-section";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { EmptyState } from "@/components/empty-state";
@@ -15,22 +16,21 @@ function resolveSource(from: string | undefined): HadithViewSource {
   return "deeplink";
 }
 
-/**
- * Hadith detail — mirrors apps/web/app/(app)/hadith/[id]/page.tsx: refs,
- * grade, narrator, collapsible Arabic, English, bookmark + share. Fires
- * `hadith_viewed` once per mount with the entry source (search / browse /
- * bookmark / deeplink). Unknown id → recoverable not-found (edge case #12).
- */
 export default function HadithDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string; from?: string }>();
   const id = decodeURIComponent(String(params.id));
-  const h = React.useMemo(() => getHadithById(id), [id]);
 
-  // Fire the view/not-found event once per unique hadith id, not again when
-  // only the navigation source param changes.
+  const query = useQuery({
+    queryKey: ["hadith", id],
+    queryFn: () => getHadithById(id),
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+  const h = query.data ?? null;
+
   const trackedId = React.useRef<string | null>(null);
   React.useEffect(() => {
+    if (query.isLoading) return;
     if (trackedId.current === id) return;
     trackedId.current = id;
     if (h) {
@@ -38,7 +38,16 @@ export default function HadithDetailScreen() {
     } else {
       hadithNotFound(id);
     }
-  }, [h, id, params.from]);
+  }, [h, id, params.from, query.isLoading]);
+
+  if (query.isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <Stack.Screen options={{ title: "Loading…" }} />
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
   if (!h) {
     return (
@@ -67,7 +76,7 @@ export default function HadithDetailScreen() {
             accessibilityRole="link"
           >
             <Text size="xs" weight="medium" className="uppercase text-muted-foreground">
-              Book {h.book_number} · {h.book_name_en}
+              {h.book_name_en}
             </Text>
           </Pressable>
           <Text size="3xl" weight="semibold">

@@ -4,8 +4,11 @@ import type { Metadata } from "next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAllBooks, getBookByNumber, getHadithsForBook } from "@/lib/hadiths";
 
-export function generateStaticParams() {
-  return getAllBooks().map((b) => ({ book: String(b.book_number) }));
+export const revalidate = 86400;
+
+export async function generateStaticParams() {
+  const books = await getAllBooks();
+  return books.map((b) => ({ book: String(b.book_number) }));
 }
 
 interface Params {
@@ -15,10 +18,10 @@ interface Params {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { book } = await params;
   const n = Number.parseInt(book, 10);
-  const meta = Number.isFinite(n) ? getBookByNumber(n) : null;
+  const meta = Number.isFinite(n) ? await getBookByNumber(n) : null;
   if (!meta) return { title: "Book not found" };
   return {
-    title: `Book ${meta.book_number}: ${meta.book_name_en}`,
+    title: `${meta.book_name_en}`,
     description: `${meta.hadith_count} hadiths in book ${meta.book_number} of Sahih al-Bukhari.`,
   };
 }
@@ -27,20 +30,18 @@ export default async function BookPage({ params }: Params) {
   const { book } = await params;
   const n = Number.parseInt(book, 10);
   if (!Number.isFinite(n)) notFound();
-  const meta = getBookByNumber(n);
+  const [meta, hadiths] = await Promise.all([getBookByNumber(n), getHadithsForBook(n)]);
   if (!meta) notFound();
-  const hadiths = getHadithsForBook(n);
 
   return (
     <div className="space-y-6">
       <div>
         <p className="text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-          Book {meta.book_number}
+          {meta.book_name_en}
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">{meta.book_name_en}</h1>
-        <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
+        <h1 className="text-2xl font-semibold tracking-tight">
           {hadiths.length} hadith{hadiths.length === 1 ? "" : "s"}
-        </p>
+        </h1>
       </div>
       <ol className="space-y-3">
         {hadiths.map((h) => (

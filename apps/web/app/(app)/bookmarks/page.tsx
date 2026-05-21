@@ -3,17 +3,40 @@
 import * as React from "react";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { HadithSchema, type Hadith } from "@hadith/shared-types";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useBookmarks } from "@/lib/queries/use-bookmarks";
-import { getHadithById } from "@/lib/hadiths";
-import type { Hadith } from "@hadith/shared-types";
+
+const ResponseSchema = z.object({ hadiths: z.array(HadithSchema) });
+
+async function fetchBookmarkedHadiths(ids: string[]): Promise<Hadith[]> {
+  if (ids.length === 0) return [];
+  const res = await fetch("/api/hadiths/by-bookmark-ids", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) return [];
+  const parsed = ResponseSchema.safeParse(await res.json());
+  return parsed.success ? parsed.data.hadiths : [];
+}
 
 export default function BookmarksPage() {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
   const ids = useBookmarks((s) => s.ids);
   const remove = useBookmarks((s) => s.remove);
+
+  const idsKey = ids.join(",");
+  const itemsQuery = useQuery<Hadith[]>({
+    queryKey: ["bookmarks", idsKey],
+    queryFn: () => fetchBookmarkedHadiths(ids),
+    enabled: mounted && ids.length > 0,
+    staleTime: 60 * 60 * 1000,
+  });
 
   if (!mounted) {
     return (
@@ -24,7 +47,7 @@ export default function BookmarksPage() {
     );
   }
 
-  const items = ids.map((id) => getHadithById(id)).filter((h): h is Hadith => h !== null);
+  const items = itemsQuery.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -35,7 +58,9 @@ export default function BookmarksPage() {
         </p>
       </div>
 
-      {items.length === 0 ? (
+      {ids.length > 0 && itemsQuery.isLoading ? (
+        <p className="text-sm text-[hsl(var(--muted-foreground))]">Loading hadiths…</p>
+      ) : items.length === 0 ? (
         <div className="rounded-md border border-dashed border-[hsl(var(--border))] p-8 text-center text-sm">
           <p className="font-medium">No bookmarks yet.</p>
           <p className="mt-1 text-[hsl(var(--muted-foreground))]">

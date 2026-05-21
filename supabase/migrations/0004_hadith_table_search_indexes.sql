@@ -1,0 +1,22 @@
+-- Phase A.2: Expression indexes on the raw hadith_table.
+-- We do not ALTER hadith_table (front-end cleans markup at render). Instead we
+-- add EXPRESSION GIN/BTREE indexes scoped to collection='bukhari' so the planner
+-- can use them for the only collection the MVP exposes.
+
+create index if not exists hadith_table_bukhari_fts_idx
+  on public.hadith_table
+  using gin (to_tsvector('english', coalesce("englishText", '')))
+  where collection = 'bukhari';
+
+create index if not exists hadith_table_bukhari_trgm_idx
+  on public.hadith_table
+  using gin (lower(coalesce("englishText", '')) gin_trgm_ops)
+  where collection = 'bukhari';
+
+create index if not exists hadith_table_bukhari_bookno_int_idx
+  on public.hadith_table ((nullif("bookNumber", '')::int))
+  where collection = 'bukhari';
+
+create index if not exists hadith_table_bukhari_book_ourno_idx
+  on public.hadith_table ("bookNumber", "ourHadithNumber")
+  where collection = 'bukhari';

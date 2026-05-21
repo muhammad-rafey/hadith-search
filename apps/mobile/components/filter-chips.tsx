@@ -1,14 +1,14 @@
 import * as React from "react";
 import { ScrollView, View } from "react-native";
-import { MOCK_BOOKS } from "@hadith/shared-types";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { type BookSummary, getAllBooks } from "@/lib/hadiths";
 
 /**
- * Search filters — same controls as the web's <fieldset> on the search page:
- * a horizontal book-chip row, a narrator text field, and a Clear button that
- * appears only when a filter is active.
+ * Search filters. The book chips are populated by the same /api/books call
+ * the Browse screen uses, so they stay in sync with the live corpus.
  */
 export function FilterChips({
   bookFilter,
@@ -24,6 +24,12 @@ export function FilterChips({
   onClear: () => void;
 }) {
   const hasFilters = bookFilter !== null || narratorFilter.length > 0;
+  const booksQuery = useQuery<BookSummary[]>({
+    queryKey: ["books"],
+    queryFn: getAllBooks,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+  const books = booksQuery.data ?? [];
 
   return (
     <View className="gap-3 rounded-md border border-border p-3">
@@ -48,7 +54,7 @@ export function FilterChips({
           >
             All
           </Button>
-          {MOCK_BOOKS.map((b) => (
+          {books.map((b) => (
             <Button
               key={b.book_number}
               size="sm"

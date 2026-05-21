@@ -1,38 +1,41 @@
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import * as React from "react";
-import { FlatList, View } from "react-native";
+import { ActivityIndicator, FlatList, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 import { Icon } from "@/components/icon";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { type BookSummary, getAllBooks } from "@/lib/hadiths";
 
-/**
- * Books list — mirrors apps/web/app/(app)/browse/page.tsx. FlatList instead
- * of a CSS grid; one column reads better on phones.
- */
 export default function BrowseScreen() {
   const router = useRouter();
-  const [books, setBooks] = React.useState<BookSummary[]>(() => getAllBooks());
-  const [refreshing, setRefreshing] = React.useState(false);
+  const query = useQuery<BookSummary[]>({
+    queryKey: ["books"],
+    queryFn: getAllBooks,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+  const books = query.data ?? [];
 
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    setBooks(getAllBooks());
-    setRefreshing(false);
-  }, []);
+  if (query.isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
   return (
     <FlatList
       data={books}
       keyExtractor={(b) => String(b.book_number)}
-      refreshing={refreshing}
-      onRefresh={onRefresh}
+      refreshing={query.isFetching && !query.isLoading}
+      onRefresh={() => query.refetch()}
       contentContainerClassName="p-4 gap-3"
       ListHeaderComponent={
         <Text size="sm" className="pb-1 text-muted-foreground">
-          {books.length} book{books.length === 1 ? "" : "s"} in the corpus.
+          {books.length} book{books.length === 1 ? "" : "s"} in Sahih al-Bukhari.
         </Text>
       }
       renderItem={({ item }) => (
@@ -40,13 +43,10 @@ export default function BrowseScreen() {
           haptic={false}
           onPress={() => router.push(`/(tabs)/browse/${item.book_number}`)}
           accessibilityRole="button"
-          accessibilityLabel={`Book ${item.book_number}, ${item.book_name_en}`}
+          accessibilityLabel={`${item.book_name_en}`}
         >
           <Card>
             <CardHeader className="pb-2">
-              <Text size="xs" weight="medium" className="uppercase text-muted-foreground">
-                Book {item.book_number}
-              </Text>
               <View className="flex-row items-start justify-between gap-2">
                 <View className="flex-1">
                   <CardTitle>{item.book_name_en}</CardTitle>
