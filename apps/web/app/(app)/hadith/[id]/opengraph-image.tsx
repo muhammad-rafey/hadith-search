@@ -8,7 +8,8 @@ export const contentType = "image/png";
 
 export default async function OgImage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const h = await getHadithById(decodeURIComponent(id));
+  // Next.js already decodes route params.
+  const h = await getHadithById(id);
   const siteHost = getSiteUrl().replace(/^https?:\/\//, "");
 
   return new ImageResponse(

@@ -7,9 +7,12 @@ import { createHash } from "node:crypto";
  *
  * Format: `language | book | narrator | canonical_query`
  *
- * `canonical_query` is the user's input lowercased, whitespace-collapsed, and
- * stripped of trailing whitespace/punctuation. The client mirror lives at
- * apps/web/lib/queries/use-search.ts:canonicalKey — keep them in sync.
+ * `canonical_query` is the user's input NFKC-normalized, lowercased,
+ * whitespace-collapsed, and stripped of trailing whitespace/punctuation. The
+ * client mirror lives at apps/web/lib/queries/use-search.ts:canonicalKey and
+ * apps/mobile/lib/queries/use-search.ts:canonicalKey — keep all three in sync,
+ * including the NFKC step (without it, two visually-identical Arabic queries
+ * in different normalization forms produce different hashes → cache misses).
  */
 export function canonicalKey(p: {
   language: string;
@@ -18,11 +21,16 @@ export function canonicalKey(p: {
   query: string;
 }): string {
   const q = p.query
+    .normalize("NFKC")
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim()
     .replace(/[\s\p{P}]+$/u, "");
-  return `${p.language}|${p.book ?? ""}|${(p.narrator ?? "").trim().toLowerCase()}|${q}`;
+  const narrator = (p.narrator ?? "")
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase();
+  return `${p.language}|${p.book ?? ""}|${narrator}|${q}`;
 }
 
 export function sha256Hex(s: string): string {

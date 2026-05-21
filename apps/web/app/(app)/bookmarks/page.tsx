@@ -8,20 +8,24 @@ import { HadithSchema, type Hadith } from "@hadith/shared-types";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { apiFetch } from "@/lib/api";
 import { useBookmarks } from "@/lib/queries/use-bookmarks";
 
 const ResponseSchema = z.object({ hadiths: z.array(HadithSchema) });
 
 async function fetchBookmarkedHadiths(ids: string[]): Promise<Hadith[]> {
   if (ids.length === 0) return [];
-  const res = await fetch("/api/hadiths/by-bookmark-ids", {
+  const res = await apiFetch("/api/hadiths/by-bookmark-ids", {
     method: "POST",
-    headers: { "content-type": "application/json" },
     body: JSON.stringify({ ids }),
   });
-  if (!res.ok) return [];
+  // Throw on network/server failure so TanStack surfaces an error state —
+  // otherwise a user with 12 bookmarks would see "No bookmarks yet" after a
+  // network blip and could panic-delete entries thinking they were lost.
+  if (!res.ok) throw new Error(`bookmark lookup failed (${res.status})`);
   const parsed = ResponseSchema.safeParse(await res.json());
-  return parsed.success ? parsed.data.hadiths : [];
+  if (!parsed.success) throw new Error("malformed bookmark response");
+  return parsed.data.hadiths;
 }
 
 export default function BookmarksPage() {
@@ -60,6 +64,27 @@ export default function BookmarksPage() {
 
       {ids.length > 0 && itemsQuery.isLoading ? (
         <p className="text-sm text-[hsl(var(--muted-foreground))]">Loading hadiths…</p>
+      ) : ids.length > 0 && itemsQuery.isError ? (
+        <div
+          role="alert"
+          className="rounded-md border border-[hsl(var(--destructive))] bg-[hsl(var(--destructive))]/10 p-4 text-sm"
+        >
+          <p className="font-medium">Couldn't load your bookmarks.</p>
+          <p className="mt-1 text-[hsl(var(--muted-foreground))]">
+            {itemsQuery.error instanceof Error
+              ? itemsQuery.error.message
+              : "Network error. Your saved IDs are preserved — try refreshing."}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="mt-3"
+            onClick={() => itemsQuery.refetch()}
+          >
+            Retry
+          </Button>
+        </div>
       ) : items.length === 0 ? (
         <div className="rounded-md border border-dashed border-[hsl(var(--border))] p-8 text-center text-sm">
           <p className="font-medium">No bookmarks yet.</p>

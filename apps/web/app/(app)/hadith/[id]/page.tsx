@@ -16,7 +16,8 @@ interface Params {
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
-  const h = await getHadithById(decodeURIComponent(id));
+  // Next.js already decodes route params — no double-decode.
+  const h = await getHadithById(id);
   if (!h) return { title: "Hadith not found" };
   const description = h.text_en.slice(0, 150);
   const title = `Sahih al-Bukhari ${h.hadith_number}${
@@ -37,8 +38,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function HadithDetailPage({ params }: Params) {
   const { id } = await params;
-  const decoded = decodeURIComponent(id);
-  const h = await getHadithById(decoded);
+  const h = await getHadithById(id);
   if (!h) notFound();
 
   const grade = h.grades?.[0];
@@ -66,8 +66,10 @@ export default async function HadithDetailPage({ params }: Params) {
     <article className="mx-auto max-w-3xl space-y-6">
       <script
         type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted static JSON-LD
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted JSON-LD; `</` escaped to prevent script-tag breakout via narrator/title text
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(articleJsonLd).replace(/</g, "\\u003c"),
+        }}
       />
 
       <ViewTracker hadithId={h.id} />

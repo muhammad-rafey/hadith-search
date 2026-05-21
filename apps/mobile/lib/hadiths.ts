@@ -1,13 +1,17 @@
 import { HadithSchema, type Hadith } from "@hadith/shared-types";
 import { z } from "zod";
 
-import { ENV } from "@/lib/env";
-import { getSupabase, isPlaceholderSupabase } from "@/lib/supabase";
+import { apiFetch } from "@/lib/api";
 
 /**
  * Data layer for the mobile app. Mirrors apps/web/lib/hadiths.ts. Each call
  * hits the Next.js API service at `${ENV.API_URL}/api/...` so the same
  * service backs both web and mobile.
+ *
+ * All calls throw on non-2xx so TanStack `error` state drives the UI
+ * (retry buttons, "network error" banners) — never silently return [] or
+ * null, which would render as "No bookmarks" / "Book not found" and risk
+ * users panic-deleting data on a transient blip.
  */
 export interface BookSummary {
   book_number: number;
@@ -28,37 +32,16 @@ const BookHadithsSchema = z.object({
   hadiths: z.array(HadithSchema),
 });
 
-async function authHeader(): Promise<Record<string, string>> {
-  if (isPlaceholderSupabase()) return {};
-  try {
-    const supabase = getSupabase();
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    return token ? { authorization: `Bearer ${token}` } : {};
-  } catch {
-    return {};
-  }
-}
-
-async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const auth = await authHeader();
-  const headers = {
-    "content-type": "application/json",
-    ...(init.headers as Record<string, string> | undefined),
-    ...auth,
-  };
-  return fetch(`${ENV.API_URL}${path}`, { ...init, headers });
+async function jsonOrThrow<T>(res: Response, label: string, schema: z.ZodType<T>): Promise<T> {
+  if (!res.ok) throw new Error(`${label} failed (${res.status})`);
+  const parsed = schema.safeParse(await res.json());
+  if (!parsed.success) throw new Error(`${label} response malformed`);
+  return parsed.data;
 }
 
 export async function getAllBooks(): Promise<BookSummary[]> {
-  try {
-    const res = await apiFetch("/api/books");
-    if (!res.ok) return [];
-    const parsed = BookListSchema.safeParse(await res.json());
-    return parsed.success ? parsed.data : [];
-  } catch {
-    return [];
-  }
+  const res = await apiFetch("/api/books");
+  return jsonOrThrow(res, "getAllBooks", BookListSchema);
 }
 
 export async function getBookByNumber(bookNumber: number): Promise<BookSummary | null> {
@@ -67,38 +50,29 @@ export async function getBookByNumber(bookNumber: number): Promise<BookSummary |
 }
 
 export async function getHadithsForBook(bookNumber: number): Promise<Hadith[]> {
-  try {
-    const res = await apiFetch(`/api/books/${bookNumber}/hadiths?limit=500`);
-    if (!res.ok) return [];
-    const parsed = BookHadithsSchema.safeParse(await res.json());
-    return parsed.success ? parsed.data.hadiths : [];
-  } catch {
-    return [];
-  }
+  const res = await apiFetch(`/api/books/${bookNumber}/hadiths?limit=500`);
+  const data = await jsonOrThrow(res, "getHadithsForBook", BookHadithsSchema);
+  return data.hadiths;
 }
 
 export async function getHadithById(id: string): Promise<Hadith | null> {
-  try {
-    const res = await apiFetch(`/api/hadiths/${encodeURIComponent(id)}`);
-    if (!res.ok) return null;
-    const parsed = HadithSchema.safeParse(await res.json());
-    return parsed.success ? parsed.data : null;
-  } catch {
-    return null;
-  }
+  const res = await apiFetch(`/api/hadiths/${encodeURIComponent(id)}`);
+  // 404 is meaningful — return null so the UI shows the empty state without
+  // a generic "failed" banner.
+  if (res.status === 404) return null;
+  return jsonOrThrow(res, "getHadithById", HadithSchema);
 }
 
 export async function getHadithsByIds(ids: string[]): Promise<Hadith[]> {
   if (ids.length === 0) return [];
-  try {
-    const res = await apiFetch("/api/hadiths/by-bookmark-ids", {
-      method: "POST",
-      body: JSON.stringify({ ids }),
-    });
-    if (!res.ok) return [];
-    const parsed = z.object({ hadiths: z.array(HadithSchema) }).safeParse(await res.json());
-    return parsed.success ? parsed.data.hadiths : [];
-  } catch {
-    return [];
-  }
+  const res = await apiFetch("/api/hadiths/by-bookmark-ids", {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+  const data = await jsonOrThrow(
+    res,
+    "getHadithsByIds",
+    z.object({ hadiths: z.array(HadithSchema) }),
+  );
+  return data.hadiths;
 }

@@ -18,8 +18,10 @@ function resolveSource(from: string | undefined): HadithViewSource {
 
 export default function HadithDetailScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string; from?: string }>();
-  const id = decodeURIComponent(String(params.id));
+  const params = useLocalSearchParams<{ id: string | string[]; from?: string }>();
+  // expo-router can return an array; take the first segment. The param is
+  // already decoded by expo-router so no decodeURIComponent here.
+  const id = Array.isArray(params.id) ? params.id[0] ?? "" : params.id ?? "";
 
   const query = useQuery({
     queryKey: ["hadith", id],

@@ -15,7 +15,7 @@ import {
   sha256Hex,
 } from "@/lib/analytics";
 import { tokenizeQuery } from "@/lib/highlight";
-import { useSearch } from "@/lib/queries/use-search";
+import { canonicalKey, useSearch } from "@/lib/queries/use-search";
 import { useUiStore } from "@/lib/store/ui-store";
 
 const QUERY_DEBOUNCE_MS = 250;
@@ -80,7 +80,16 @@ export default function SearchScreen() {
 
       let cancelled = false;
       (async () => {
-        const queryHash = await sha256Hex(trimmed);
+        // Hash the canonical key (not the raw query) so analytics + server
+        // query_cache see the same hash from web and mobile.
+        const queryHash = await sha256Hex(
+          canonicalKey({
+            language: vars.language ?? "en",
+            book: vars.book ?? null,
+            narrator: vars.narrator ?? null,
+            query: vars.query,
+          }),
+        );
         searchSubmitted({
           query_hash: queryHash,
           query_length: trimmed.length,
@@ -120,7 +129,14 @@ export default function SearchScreen() {
 
   const onResultPress = React.useCallback(
     async (result: SearchResult, position: number) => {
-      const queryHash = await sha256Hex(debounced.trim());
+      const queryHash = await sha256Hex(
+        canonicalKey({
+          language: "en",
+          book: bookFilter,
+          narrator: debouncedNarrator || null,
+          query: debounced.trim(),
+        }),
+      );
       searchResultClicked({
         query_hash: queryHash,
         hadith_id: result.id,
@@ -129,7 +145,7 @@ export default function SearchScreen() {
       });
       router.push(`/hadith/${encodeURIComponent(result.id)}?from=search`);
     },
-    [debounced, router],
+    [bookFilter, debounced, debouncedNarrator, router],
   );
 
   const onClear = React.useCallback(() => {

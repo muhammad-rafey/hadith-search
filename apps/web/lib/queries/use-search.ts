@@ -12,12 +12,15 @@ import { useUiStore } from "@/lib/store";
 
 /**
  * Canonical key format for hashing — must match the server canonicalKey() at
- * apps/web/lib/server/hash.ts. Mismatches would cause cache misses.
+ * apps/web/lib/server/hash.ts AND the mobile mirror at
+ * apps/mobile/lib/queries/use-search.ts. Drift between any of the three would
+ * fragment the cache.
  *
  * Format: `language | book | narrator | canonical_query`
  *
- * canonical_query: lowercased, whitespace-collapsed, trailing whitespace and
- * punctuation removed.
+ * canonical_query: NFKC-normalized, lowercased, whitespace-collapsed, trailing
+ * whitespace and punctuation removed. NFKC ensures Arabic queries in different
+ * normalization forms hash to the same value.
  */
 export function canonicalKey({
   language,
@@ -31,11 +34,13 @@ export function canonicalKey({
   query: string;
 }): string {
   const canonicalQuery = query
+    .normalize("NFKC")
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim()
     .replace(/[\s\p{P}]+$/u, "");
-  return `${language}|${book ?? ""}|${(narrator ?? "").trim().toLowerCase()}|${canonicalQuery}`;
+  const n = (narrator ?? "").normalize("NFKC").trim().toLowerCase();
+  return `${language}|${book ?? ""}|${n}|${canonicalQuery}`;
 }
 
 /**

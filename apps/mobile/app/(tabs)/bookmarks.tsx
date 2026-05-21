@@ -50,6 +50,17 @@ export default function BookmarksScreen() {
             <View className="items-center py-8">
               <ActivityIndicator />
             </View>
+          ) : ids.length > 0 && itemsQuery.isError ? (
+            <EmptyState
+              title="Couldn't load bookmarks"
+              description={
+                itemsQuery.error instanceof Error
+                  ? itemsQuery.error.message
+                  : "Network error. Your saved IDs are safe — try again."
+              }
+              ctaLabel="Retry"
+              onCta={() => itemsQuery.refetch()}
+            />
           ) : (
             <EmptyState
               title="No bookmarks yet."

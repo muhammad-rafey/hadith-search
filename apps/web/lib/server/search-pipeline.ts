@@ -7,6 +7,7 @@ import {
   parseBukhariId,
   type SearchRequest,
   type SearchResponse,
+  SearchResponseSchema,
   type SearchResult,
 } from "@hadith/shared-types";
 
@@ -32,6 +33,10 @@ const lru = new TtlLru<string, SearchResponse>();
  *   6. search_bukhari_hybrid RPC.
  *   7. Cohere rerank.
  *   8. Map rows, log + cache writes (fire-and-forget).
+ *
+ * Degraded results (Cohere unavailable) are NEVER written to the persistent
+ * cache — only to the per-isolate LRU. Otherwise a Cohere outage would
+ * poison the 7-day cache for every queried term until the cache expires.
  */
 export async function runSearch(
   req: SearchRequest,
@@ -59,7 +64,7 @@ export async function runSearch(
         mode: "reference",
         latency_ms: Date.now() - start,
       };
-      void logSearch(supabase, {
+      fireAndForgetLog(supabase, {
         user_id: userId,
         query_hash,
         query_length: queryLength,
@@ -79,7 +84,7 @@ export async function runSearch(
     const local = lru.get(query_hash);
     if (local) {
       const response: SearchResponse = { ...local, mode: "cache", latency_ms: Date.now() - start };
-      void logSearch(supabase, {
+      fireAndForgetLog(supabase, {
         user_id: userId,
         query_hash,
         query_length: queryLength,
@@ -100,7 +105,7 @@ export async function runSearch(
         mode: "cache",
         latency_ms: Date.now() - start,
       };
-      void logSearch(supabase, {
+      fireAndForgetLog(supabase, {
         user_id: userId,
         query_hash,
         query_length: queryLength,
@@ -139,7 +144,7 @@ export async function runSearch(
       latency_ms: Date.now() - start,
       ...(embed.degraded ? { degraded: true } : {}),
     };
-    void logSearch(supabase, {
+    fireAndForgetLog(supabase, {
       user_id: userId,
       query_hash,
       query_length: queryLength,
@@ -163,14 +168,15 @@ export async function runSearch(
   // Map to SearchResult, then rerank by canonical query (privacy: never pass raw to rerank).
   const candidates = rows.map(mapRowToSearchResult);
   const rr = await rerankCandidates(canonical, candidates, req.topK ?? 10);
-  const results: SearchResult[] = rr.indexes
-    .map((i, j) => {
-      const c = candidates[i];
-      if (!c) return null;
-      const score = rr.scores[j];
-      return typeof score === "number" ? { ...c, relevance: score } : c;
-    })
-    .filter((r): r is SearchResult => r !== null);
+  const results: SearchResult[] = [];
+  for (let j = 0; j < rr.indexes.length; j++) {
+    const idx = rr.indexes[j];
+    if (typeof idx !== "number") continue;
+    const c = candidates[idx];
+    if (!c) continue;
+    const score = rr.scores[j];
+    results.push(typeof score === "number" ? { ...c, relevance: score } : c);
+  }
 
   const degraded = embed.degraded || rr.degraded;
   const response: SearchResponse = {
@@ -181,11 +187,18 @@ export async function runSearch(
   };
 
   // Stage 8: fire-and-forget cache + log writes. Never block the response.
+  // Skip persistent cache when degraded — a Cohere outage shouldn't poison
+  // the 7-day cache. The per-isolate LRU still gets the entry to absorb
+  // burst traffic during the outage; it expires in 5 minutes.
   if (!req.skip_cache) {
     lru.set(query_hash, response);
-    void writeQueryCache(supabase, query_hash, response);
+    if (!degraded) {
+      void writeQueryCache(supabase, query_hash, response).catch((e) => {
+        console.error("query_cache write failed:", e instanceof Error ? e.message : e);
+      });
+    }
   }
-  void logSearch(supabase, {
+  fireAndForgetLog(supabase, {
     user_id: userId,
     query_hash,
     query_length: queryLength,
@@ -207,15 +220,15 @@ async function resolveReference(
   ref: Reference,
 ): Promise<SearchResult | null> {
   if (ref.kind === "by_book_and_seq") {
-    const { data, error } = await supabase
-      .rpc("get_bukhari_book_hadiths", { p_book: ref.book, p_limit: 500, p_offset: 0 });
+    const { data, error } = await supabase.rpc("get_bukhari_hadith_by_book_seq", {
+      p_book: ref.book,
+      p_seq: ref.seq,
+    });
     if (error || !data) return null;
-    const rows = (data as unknown[])
-      .map((r) => BukhariRpcRowSchema.safeParse(r))
-      .filter((p): p is { success: true; data: BukhariRpcRow } => p.success)
-      .map((p) => p.data);
-    const row = rows.find((r) => r.our_hadith_number === ref.seq);
-    return row ? mapRowToSearchResult(row) : null;
+    const first = (data as unknown[])[0];
+    if (!first) return null;
+    const parsed = BukhariRpcRowSchema.safeParse(first);
+    return parsed.success ? mapRowToSearchResult(parsed.data) : null;
   }
   // by_urn_or_number — try URN first when the value is large enough; else
   // hadithNumber. Fall through both if needed.
@@ -258,7 +271,13 @@ async function readQueryCache(
     .gt("expires_at", new Date().toISOString())
     .maybeSingle();
   if (error || !data) return null;
-  return data.results as SearchResponse;
+  // Validate stored body — if someone manually edits the cache row or the
+  // schema drifts, treat it as a cache miss rather than returning garbage.
+  const parsed = SearchResponseSchema.safeParse({
+    ...(data.results as Record<string, unknown>),
+    latency_ms: 0, // placeholder; overwritten by caller
+  });
+  return parsed.success ? parsed.data : null;
 }
 
 async function writeQueryCache(
@@ -268,8 +287,8 @@ async function writeQueryCache(
 ): Promise<void> {
   const expires_at = new Date(Date.now() + CACHE_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
   // Drop latency_ms from cached body — it'll be replaced on read.
-  const { latency_ms: _ignored, ...body } = response;
-  void _ignored;
+  const { latency_ms, ...body } = response;
+  void latency_ms;
   const { error } = await supabase
     .from("query_cache")
     .upsert({ query_hash, results: body, expires_at }, { onConflict: "query_hash" });
@@ -289,6 +308,17 @@ type SearchLogRow = {
   latency_ms: number;
   degraded: boolean;
 };
+
+function fireAndForgetLog(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  row: SearchLogRow,
+): void {
+  // Always handle the rejection — Node's default mode warns on unhandled
+  // rejections; strict mode would crash the worker.
+  void logSearch(supabase, row).catch((e) => {
+    console.error("search_logs insert failed:", e instanceof Error ? e.message : e);
+  });
+}
 
 async function logSearch(
   supabase: ReturnType<typeof getSupabaseAdmin>,

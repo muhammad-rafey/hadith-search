@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 export const runtime = "nodejs";
-export const revalidate = 86400;
+export const dynamic = "force-dynamic";
+// CDN-level caching — Vercel honors s-maxage on edge. revalidate is omitted
+// here so the build doesn't try to prerender this route (which would require
+// DB credentials at build time).
 
 export type BookListEntry = {
   book_number: number;
@@ -26,5 +29,7 @@ export async function GET() {
       book_name_en: `Book ${r.book_number}`,
       hadith_count: r.hadith_count,
     }));
-  return NextResponse.json(books);
+  return NextResponse.json(books, {
+    headers: { "cache-control": "public, s-maxage=86400, stale-while-revalidate=3600" },
+  });
 }

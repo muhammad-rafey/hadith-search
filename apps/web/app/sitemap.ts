@@ -35,8 +35,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  // IDs are "bukhari:N" — `:` is a valid path-segment character (RFC 3986),
+  // and Next.js routes accept it unencoded, so we emit clean URLs for crawlers.
   const hadithEntries: MetadataRoute.Sitemap = hadithIds.map((id) => ({
-    url: `${SITE}/hadith/${encodeURIComponent(id)}`,
+    url: `${SITE}/hadith/${id}`,
     lastModified: LAST_MODIFIED,
     changeFrequency: "yearly",
     priority: 0.6,

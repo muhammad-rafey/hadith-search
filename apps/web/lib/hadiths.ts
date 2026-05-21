@@ -1,8 +1,11 @@
 import "server-only";
 
+import { cache } from "react";
+
 import {
   BukhariRpcRowSchema,
   type Hadith,
+  makeBukhariId,
   mapRowToHadith,
   parseBukhariId,
 } from "@hadith/shared-types";
@@ -22,7 +25,12 @@ export interface BookSummary {
   hadith_count: number;
 }
 
-export async function getAllBooks(): Promise<BookSummary[]> {
+/**
+ * `cache()` dedupes the call within a single React render pass — e.g. the
+ * detail page's metadata + body call `getHadithById` separately but only
+ * pay for one RPC.
+ */
+export const getAllBooks = cache(async (): Promise<BookSummary[]> => {
   try {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.rpc("get_bukhari_book_list");
@@ -44,14 +52,16 @@ export async function getAllBooks(): Promise<BookSummary[]> {
     console.error("getAllBooks failed:", err instanceof Error ? err.message : err);
     return [];
   }
-}
+});
 
-export async function getBookByNumber(bookNumber: number): Promise<BookSummary | null> {
-  const all = await getAllBooks();
-  return all.find((b) => b.book_number === bookNumber) ?? null;
-}
+export const getBookByNumber = cache(
+  async (bookNumber: number): Promise<BookSummary | null> => {
+    const all = await getAllBooks();
+    return all.find((b) => b.book_number === bookNumber) ?? null;
+  },
+);
 
-export async function getHadithsForBook(bookNumber: number): Promise<Hadith[]> {
+export const getHadithsForBook = cache(async (bookNumber: number): Promise<Hadith[]> => {
   try {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase.rpc("get_bukhari_book_hadiths", {
@@ -71,9 +81,9 @@ export async function getHadithsForBook(bookNumber: number): Promise<Hadith[]> {
     console.error("getHadithsForBook failed:", err instanceof Error ? err.message : err);
     return [];
   }
-}
+});
 
-export async function getHadithById(id: string): Promise<Hadith | null> {
+export const getHadithById = cache(async (id: string): Promise<Hadith | null> => {
   const value = parseBukhariId(id);
   if (value === null) return null;
   try {
@@ -100,15 +110,26 @@ export async function getHadithById(id: string): Promise<Hadith | null> {
     console.error("getHadithById failed:", err instanceof Error ? err.message : err);
     return null;
   }
-}
+});
 
-/** Used by the sitemap generator. */
-export async function getAllHadithIds(): Promise<string[]> {
-  const books = await getAllBooks();
-  const out: string[] = [];
-  for (const b of books) {
-    const list = await getHadithsForBook(b.book_number);
-    for (const h of list) out.push(h.id);
+/**
+ * Used by the sitemap generator. Goes through `get_bukhari_hadith_ids` which
+ * returns only URNs — orders of magnitude faster than the per-book hadith
+ * pull the original implementation used (which timed out on Vercel).
+ */
+export const getAllHadithIds = cache(async (): Promise<string[]> => {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.rpc("get_bukhari_hadith_ids");
+    if (error) {
+      console.error("getAllHadithIds rpc error:", error.message.slice(0, 200));
+      return [];
+    }
+    return ((data ?? []) as { arabic_urn: number }[])
+      .filter((r) => typeof r.arabic_urn === "number")
+      .map((r) => makeBukhariId(r.arabic_urn));
+  } catch (err) {
+    console.error("getAllHadithIds failed:", err instanceof Error ? err.message : err);
+    return [];
   }
-  return out;
-}
+});

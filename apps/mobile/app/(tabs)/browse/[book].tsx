@@ -10,8 +10,12 @@ import { getBookByNumber, getHadithsForBook } from "@/lib/hadiths";
 
 export default function BookScreen() {
   const router = useRouter();
-  const { book } = useLocalSearchParams<{ book: string }>();
-  const n = Number.parseInt(String(book), 10);
+  const { book } = useLocalSearchParams<{ book: string | string[] }>();
+  // expo-router can return either string or string[] for dynamic segments —
+  // pick the first when it's an array so we don't accidentally parseInt
+  // "1,2" to 1 for a route like /browse/1/2.
+  const bookParam = Array.isArray(book) ? book[0] : book;
+  const n = Number.parseInt(bookParam ?? "", 10);
 
   const metaQuery = useQuery({
     queryKey: ["book-meta", n],

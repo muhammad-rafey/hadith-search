@@ -39,7 +39,7 @@ export function FeedbackThumbs({ queryHash, hadithId, position }: FeedbackThumbs
     searchFeedbackGiven({ query_hash: queryHash, hadith_id: hadithId, position, thumb });
 
     try {
-      await apiFetch("/api/feedback", {
+      const res = await apiFetch("/api/feedback", {
         method: "POST",
         body: JSON.stringify({
           query_hash: queryHash,
@@ -48,12 +48,14 @@ export function FeedbackThumbs({ queryHash, hadithId, position }: FeedbackThumbs
           thumb,
         }),
       });
+      if (!res.ok) throw new Error(`feedback failed: ${res.status}`);
+      setState(thumb);
     } catch {
-      // Silently swallow network errors — feedback is best-effort and
-      // we don't want to surface a toast for a non-critical action.
+      // Don't show "Thanks!" if the write failed — revert to allow retry.
+      // Feedback is best-effort so we don't pop a toast; the UI just stays
+      // in its pre-submit state.
+      setState("none");
     }
-
-    setState(thumb);
   };
 
   if (isSubmitted) {

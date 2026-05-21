@@ -6,15 +6,22 @@
  *     [matn]…[/matn]; narrator names are wrapped in
  *     [narrator id="N" role="…" tooltip="…"]NAME[/narrator] tags.
  *   - englishText carries unpaired <p> tags, leading "Narrated X:" prefixes
- *     (sometimes with backtick or apostrophe before the name), and a lot of
- *     decorative whitespace.
+ *     (sometimes with backtick or apostrophe before the name), a lot of
+ *     decorative whitespace, and HTML entities like &amp;#39; / &amp;quot; /
+ *     &amp;nbsp; that need to be decoded for legible display.
  */
 
 // ── Arabic ──────────────────────────────────────────────────────────────────
 
-const ARABIC_NARRATOR_OPEN_RE = /\[narrator\s+[^\]]*\]/g;
+// Allow narrator tags with or without attributes (`[narrator]` and
+// `[narrator id="N" …]` both appear in the corpus).
+const ARABIC_NARRATOR_OPEN_RE = /\[narrator(?:\s+[^\]]*)?\]/g;
 const ARABIC_NARRATOR_CLOSE_RE = /\[\/narrator\]/g;
 const ARABIC_SECTION_TAG_RE = /\[\/?(?:prematn|matn)\]/g;
+
+// Bidi control characters can break copy/paste alignment; strip them.
+// (We keep diacritics, tatweel optional via NFKC, ZWJ/ZWNJ for joined forms.)
+const ARABIC_BIDI_CONTROL_RE = /[‎‏‪-‮⁦-⁩]/g;
 
 /**
  * Strip narrator markup and section markers from arabicText, keeping the
@@ -26,6 +33,7 @@ export function cleanArabicText(raw: string | null | undefined): string {
     .replace(ARABIC_NARRATOR_OPEN_RE, "")
     .replace(ARABIC_NARRATOR_CLOSE_RE, "")
     .replace(ARABIC_SECTION_TAG_RE, "")
+    .replace(ARABIC_BIDI_CONTROL_RE, "")
     .replace(/[ \t]+/g, " ")
     .replace(/\s*\n\s*/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
@@ -54,18 +62,64 @@ export function splitArabicSnad(
 
 // ── English ─────────────────────────────────────────────────────────────────
 
+// Whitelist <p> and <br> as paragraph/line breaks; strip every other tag.
 const HTML_P_RE = /<\/?p[^>]*>/gi;
 const HTML_BR_RE = /<\/?br[^>]*>/gi;
+const HTML_ANY_TAG_RE = /<\/?[a-z][^>]*>/gi;
+
+// Common named entities + numeric (decimal and hex) entity decoder.
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+  // Curly quotes show up frequently in transliterations.
+  lsquo: "‘",
+  rsquo: "’",
+  ldquo: "“",
+  rdquo: "”",
+  hellip: "…",
+  mdash: "—",
+  ndash: "–",
+};
+
+function decodeEntities(s: string): string {
+  return s.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z]+);/g, (_, body: string) => {
+    if (body.startsWith("#x") || body.startsWith("#X")) {
+      const cp = Number.parseInt(body.slice(2), 16);
+      return Number.isFinite(cp) ? safeFromCodePoint(cp) : "";
+    }
+    if (body.startsWith("#")) {
+      const cp = Number.parseInt(body.slice(1), 10);
+      return Number.isFinite(cp) ? safeFromCodePoint(cp) : "";
+    }
+    return NAMED_ENTITIES[body.toLowerCase()] ?? `&${body};`;
+  });
+}
+
+function safeFromCodePoint(cp: number): string {
+  // Drop control chars except newline/tab; clamp surrogates.
+  if (cp < 0 || cp > 0x10ffff) return "";
+  if (cp >= 0xd800 && cp <= 0xdfff) return "";
+  if (cp < 0x20 && cp !== 0x09 && cp !== 0x0a) return "";
+  return String.fromCodePoint(cp);
+}
 
 /**
- * Strip HTML tags from englishText and normalize whitespace.
- * Tolerates unpaired <p> tags (which the source data frequently emits).
+ * Strip HTML tags from englishText, decode named/numeric entities, and
+ * normalize whitespace. Tolerates unpaired <p> tags (which the source data
+ * frequently emits).
  */
 export function cleanEnglishText(raw: string | null | undefined): string {
   if (!raw) return "";
-  return raw
-    .replace(HTML_P_RE, "\n")
-    .replace(HTML_BR_RE, "\n")
+  return decodeEntities(
+    raw
+      .replace(HTML_P_RE, "\n")
+      .replace(HTML_BR_RE, "\n")
+      .replace(HTML_ANY_TAG_RE, ""),
+  )
     .replace(/[ \t]+/g, " ")
     .replace(/ \n/g, "\n")
     .replace(/\n /g, "\n")
@@ -81,7 +135,8 @@ const NARRATOR_PREFIX_RE =
 
 /**
  * Extract the narrator name from the "Narrated X:" prefix at the start of
- * englishText. Returns null when no prefix is found.
+ * englishText. Returns the first narrator only — compound forms like
+ * "Narrated A and B:" come through as a single string ("A and B").
  */
 export function extractNarratorFromEnglish(
   raw: string | null | undefined,
@@ -112,6 +167,7 @@ const NON_ALPHANUM_RE = /[^a-z0-9\s]/g;
 /**
  * NFKD-normalize, strip diacritics, lowercase, collapse to [a-z0-9 ], trim.
  * Used when matching a user-typed narrator filter against extracted names.
+ * Latin-only by design — Arabic narrator filtering should use the raw text.
  */
 export function normalizeNarrator(s: string | null | undefined): string {
   if (!s) return "";

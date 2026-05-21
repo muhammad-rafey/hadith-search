@@ -18,7 +18,8 @@ import {
 } from "@/lib/analytics";
 import { tokenizeQuery } from "@/lib/highlight";
 
-const DEBOUNCE_MS = 250;
+const QUERY_DEBOUNCE_MS = 250;
+const NARRATOR_DEBOUNCE_MS = 200;
 
 type BookOption = { book_number: number; book_name_en: string; hadith_count: number };
 
@@ -36,12 +37,16 @@ function SearchPageInner() {
   const setLastQuery = useUiStore((s) => s.setLastQuery);
   const bookFilter = useUiStore((s) => s.bookFilter);
   const narratorFilter = useUiStore((s) => s.narratorFilter);
+  // Subscribe to privateMode so a Settings-side toggle re-issues searches
+  // with skip_cache: true instead of returning a stale cache.
+  const privateMode = useUiStore((s) => s.privateMode);
   const setBookFilter = useUiStore((s) => s.setBookFilter);
   const setNarratorFilter = useUiStore((s) => s.setNarratorFilter);
   const clearFilters = useUiStore((s) => s.clearFilters);
 
   const [query, setQuery] = React.useState(initial);
   const [debounced, setDebounced] = React.useState(initial);
+  const [debouncedNarrator, setDebouncedNarrator] = React.useState(narratorFilter);
   const search = useSearch();
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [hasQuery, setHasQuery] = React.useState(initial.trim().length > 0);
@@ -60,9 +65,14 @@ function SearchPageInner() {
   });
 
   React.useEffect(() => {
-    const t = setTimeout(() => setDebounced(query), DEBOUNCE_MS);
+    const t = setTimeout(() => setDebounced(query), QUERY_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [query]);
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedNarrator(narratorFilter), NARRATOR_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [narratorFilter]);
 
   const mutateAsync = search.mutateAsync;
 
@@ -82,8 +92,8 @@ function SearchPageInner() {
       language: "en",
       topK: 10,
       ...(bookFilter ? { book: bookFilter } : {}),
-      ...(narratorFilter.trim() ? { narrator: narratorFilter.trim() } : {}),
-      skip_cache: useUiStore.getState().privateMode,
+      ...(debouncedNarrator.trim() ? { narrator: debouncedNarrator.trim() } : {}),
+      skip_cache: privateMode,
     };
 
     let cancelled = false;
@@ -96,18 +106,20 @@ function SearchPageInner() {
           query: vars.query,
         }),
       );
+      // Fire submitted before the network call so the analytics denominator
+      // includes failures, not just successes.
+      searchSubmitted({
+        query_hash: queryHash,
+        query_length: trimmed.length,
+        language: vars.language,
+        has_book_filter: !!vars.book,
+        has_narrator_filter: !!vars.narrator,
+      });
       try {
         const data = await mutateAsync(vars);
         if (cancelled) return;
         setResults(data.results);
         setResultQueryHash(queryHash);
-        searchSubmitted({
-          query_hash: queryHash,
-          query_length: trimmed.length,
-          language: vars.language,
-          has_book_filter: !!vars.book,
-          has_narrator_filter: !!vars.narrator,
-        });
         searchResultsReturned({
           query_hash: queryHash,
           result_count: data.results.length,
@@ -123,7 +135,7 @@ function SearchPageInner() {
     return () => {
       cancelled = true;
     };
-  }, [debounced, bookFilter, narratorFilter, setLastQuery]);
+  }, [debounced, bookFilter, debouncedNarrator, privateMode, setLastQuery]);
 
   const tokens = React.useMemo(() => tokenizeQuery(debounced), [debounced]);
 
@@ -217,6 +229,7 @@ function SearchPageInner() {
         error={search.error}
         hasQuery={hasQuery}
         queryTokens={tokens}
+        queryHash={resultQueryHash}
         onResultClick={onResultClick}
       />
     </div>

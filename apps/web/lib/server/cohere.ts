@@ -17,15 +17,19 @@ function getClient(): CohereClient | null {
   return cohereClient;
 }
 
-/** Reject after `ms` if `p` hasn't settled. The request continues in the
- *  background but the caller proceeds. */
-function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
-  return Promise.race([
-    p,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms),
-    ),
-  ]);
+/**
+ * Wire an AbortSignal into the SDK call so an in-flight request actually
+ * stops on timeout (the previous Promise.race left the request running in
+ * the background — fine for one-off testing, but on a stuck Cohere endpoint
+ * this piles up zombie work and burns Vercel CPU seconds).
+ */
+function withAbortTimeout(ms: number): { signal: AbortSignal; clear: () => void } {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(new Error(`timed out after ${ms}ms`)), ms);
+  return {
+    signal: controller.signal,
+    clear: () => clearTimeout(timer),
+  };
 }
 
 /** Cohere v4 returns `{ embeddings: { float: number[][] } }`, older v3 returned
@@ -63,28 +67,34 @@ export async function embedQuery(query: string): Promise<EmbedResult> {
   if (!client) {
     return { embedding: stubEmbedding(query), degraded: true, reason: "no_api_key" };
   }
+  const abort = withAbortTimeout(EMBED_TIMEOUT_MS);
   try {
     // `outputDimension` is accepted by the Cohere API for embed-v4 but is
     // missing from cohere-ai@7.17.1's EmbedRequest type — assert through.
-    const res = await withTimeout(
-      client.embed({
+    const res = await client.embed(
+      {
         model: EMBED_MODEL,
         inputType: "search_query",
         texts: [query],
         embeddingTypes: ["float"],
         outputDimension: EMBED_DIM,
-      } as Parameters<typeof client.embed>[0] & { outputDimension: number }),
-      EMBED_TIMEOUT_MS,
-      "embedQuery",
+      } as Parameters<typeof client.embed>[0] & { outputDimension: number },
+      { abortSignal: abort.signal },
     );
     const vec = extractFirstEmbedding(res);
     if (!vec || vec.length !== EMBED_DIM) {
+      // Dimension mismatch is a config bug — log loud so it gets noticed.
+      console.warn(
+        `[cohere] embedQuery wrong dim: got ${vec?.length}, expected ${EMBED_DIM}. Falling back.`,
+      );
       return { embedding: stubEmbedding(query), degraded: true, reason: "bad_response" };
     }
     return { embedding: vec, degraded: false };
   } catch (err) {
     const reason = err instanceof Error ? err.message.slice(0, 120) : "unknown";
     return { embedding: stubEmbedding(query), degraded: true, reason };
+  } finally {
+    abort.clear();
   }
 }
 
@@ -109,6 +119,14 @@ export async function embedDocuments(texts: string[]): Promise<number[][]> {
       `Cohere embed returned ${vecs?.length ?? 0} vectors for ${texts.length} texts`,
     );
   }
+  // Dimension sanity check — wrong dim here would mean every upsert breaks
+  // with a halfvec(1024) cast error downstream.
+  for (let i = 0; i < vecs.length; i++) {
+    const v = vecs[i];
+    if (!v || v.length !== EMBED_DIM) {
+      throw new Error(`Cohere returned ${v?.length ?? 0}-d vector at idx ${i} (expected ${EMBED_DIM})`);
+    }
+  }
   return vecs;
 }
 
@@ -125,7 +143,8 @@ export type RerankResult = {
  *
  * On any failure (timeout, kill switch, no API key, empty result) returns the
  * identity ordering with `degraded: true` so the caller can fall back to RRF
- * order.
+ * order. Out-of-range indexes from Cohere are filtered defensively and
+ * counted in degraded.
  */
 export async function rerankCandidates(
   canonicalQuery: string,
@@ -139,28 +158,43 @@ export async function rerankCandidates(
   if (!client || candidates.length === 0) {
     return identityRerank(candidates.length, topK, !client);
   }
+  const abort = withAbortTimeout(RERANK_TIMEOUT_MS);
   try {
-    const res = await withTimeout(
-      client.rerank({
+    const res = await client.rerank(
+      {
         model: RERANK_MODEL,
         query: canonicalQuery,
         documents: candidates.map((c) => c.text_en_full.slice(0, 4000)),
         topN: Math.min(topK, candidates.length),
-      }),
-      RERANK_TIMEOUT_MS,
-      "rerank",
+      },
+      { abortSignal: abort.signal },
     );
     const results = res.results ?? [];
     if (results.length === 0) {
       return identityRerank(candidates.length, topK, true);
     }
-    return {
-      indexes: results.map((r) => r.index),
-      scores: results.map((r) => clamp01(r.relevanceScore ?? 0)),
-      degraded: false,
-    };
+    const indexes: number[] = [];
+    const scores: number[] = [];
+    let dropped = 0;
+    for (const r of results) {
+      if (typeof r.index !== "number" || r.index < 0 || r.index >= candidates.length) {
+        dropped++;
+        continue;
+      }
+      indexes.push(r.index);
+      scores.push(clamp01(r.relevanceScore ?? 0));
+    }
+    if (dropped > 0) {
+      console.warn(`[cohere] rerank dropped ${dropped} out-of-range index(es) from ${results.length} results`);
+    }
+    if (indexes.length === 0) {
+      return identityRerank(candidates.length, topK, true);
+    }
+    return { indexes, scores, degraded: dropped > 0 };
   } catch {
     return identityRerank(candidates.length, topK, true);
+  } finally {
+    abort.clear();
   }
 }
 
@@ -207,6 +241,7 @@ function stubEmbedding(seed: string): number[] {
 
 export const COHERE_EMBED_DIM = EMBED_DIM;
 export const COHERE_EMBED_MODEL = EMBED_MODEL;
+export const COHERE_AVAILABLE = (): boolean => Boolean(process.env.COHERE_API_KEY);
 
 /** Encode a number[] as the Postgres halfvec/vector wire format ("[a,b,c,...]"). */
 export function toPgVectorLiteral(v: number[]): string {

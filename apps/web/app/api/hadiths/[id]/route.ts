@@ -9,14 +9,15 @@ import {
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 export const runtime = "nodejs";
-export const revalidate = 86400;
+export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
+  // Next.js already decodes route params, so we don't double-decode here.
   const { id } = await ctx.params;
-  const value = parseBukhariId(decodeURIComponent(id));
+  const value = parseBukhariId(id);
   if (value === null) {
     return NextResponse.json({ error: "invalid_id" }, { status: 400 });
   }
@@ -37,7 +38,9 @@ export async function GET(
   if (!finalRow) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
-  return NextResponse.json(mapRowToHadith(finalRow));
+  return NextResponse.json(mapRowToHadith(finalRow), {
+    headers: { "cache-control": "public, s-maxage=86400, stale-while-revalidate=3600" },
+  });
 }
 
 async function lookup(

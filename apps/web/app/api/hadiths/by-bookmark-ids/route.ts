@@ -7,16 +7,32 @@ import {
   parseBukhariId,
 } from "@hadith/shared-types";
 
+import { checkRateLimit, clientKeyFromRequest } from "@/lib/server/rate-limit";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Per-id cap matches the longest valid bukhari:N (URN can be ≤ 6 digits;
+// "bukhari:999999" = 14 chars). 32 is generous and bounds body size.
 const RequestSchema = z.object({
-  ids: z.array(z.string()).max(500),
+  ids: z.array(z.string().min(1).max(32)).max(500),
 });
 
 export async function POST(req: Request) {
+  const rl = checkRateLimit(clientKeyFromRequest(req));
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
+  // Bound body size up front — Zod will reject oversize arrays, but parsing a
+  // 10 MB JSON first wastes CPU. content-length is advisory; the route is
+  // still safe if missing.
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  if (contentLength > 32_000) {
+    return NextResponse.json({ error: "request_too_large" }, { status: 413 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();
