@@ -1,34 +1,33 @@
 import { useRouter } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import * as React from "react";
-import { FlatList, View } from "react-native";
+import { ActivityIndicator, FlatList, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQuery } from "@tanstack/react-query";
 import type { Hadith } from "@hadith/shared-types";
 import { EmptyState } from "@/components/empty-state";
 import { Icon } from "@/components/icon";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
-import { getHadithById } from "@/lib/hadiths";
+import { getHadithsByIds } from "@/lib/hadiths";
 import { useBookmarks } from "@/lib/queries/use-bookmarks";
 
-/**
- * Bookmarks — mirrors apps/web/app/(app)/bookmarks/page.tsx. Reads the same
- * Zustand store, resolves ids → hadiths, drops any that no longer exist.
- * Swipe-to-delete (gesture users) plus an always-visible Remove button
- * (keyboard / assistive-tech users) — both call the same store action.
- */
 export default function BookmarksScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const ids = useBookmarks((s) => s.ids);
   const remove = useBookmarks((s) => s.remove);
 
-  const items = React.useMemo(
-    () => ids.map((id) => getHadithById(id)).filter((x): x is Hadith => x !== null),
-    [ids],
-  );
+  const idsKey = ids.join(",");
+  const itemsQuery = useQuery<Hadith[]>({
+    queryKey: ["bookmarks", idsKey],
+    queryFn: () => getHadithsByIds(ids),
+    enabled: ids.length > 0,
+    staleTime: 60 * 60 * 1000,
+  });
+  const items = itemsQuery.data ?? [];
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
@@ -47,12 +46,29 @@ export default function BookmarksScreen() {
           </View>
         }
         ListEmptyComponent={
-          <EmptyState
-            title="No bookmarks yet."
-            description="Open a hadith and tap Bookmark to save it here."
-            ctaLabel="Start searching"
-            onCta={() => router.push("/(tabs)/search")}
-          />
+          ids.length > 0 && itemsQuery.isLoading ? (
+            <View className="items-center py-8">
+              <ActivityIndicator />
+            </View>
+          ) : ids.length > 0 && itemsQuery.isError ? (
+            <EmptyState
+              title="Couldn't load bookmarks"
+              description={
+                itemsQuery.error instanceof Error
+                  ? itemsQuery.error.message
+                  : "Network error. Your saved IDs are safe — try again."
+              }
+              ctaLabel="Retry"
+              onCta={() => itemsQuery.refetch()}
+            />
+          ) : (
+            <EmptyState
+              title="No bookmarks yet."
+              description="Open a hadith and tap Bookmark to save it here."
+              ctaLabel="Start searching"
+              onCta={() => router.push("/(tabs)/search")}
+            />
+          )
         }
         renderItem={({ item: h }) => (
           <Swipeable

@@ -1,12 +1,13 @@
 import type { MetadataRoute } from "next";
-import { getAllBooks, getAllHadiths } from "@/lib/hadiths";
+import { getAllBooks, getAllHadithIds } from "@/lib/hadiths";
 import { getSiteUrl } from "@/lib/site";
 
 // Fixed date so re-deployments don't prompt crawlers to re-fetch unchanged pages.
-// TODO: switch to row.updated_at once Supabase data lands.
 const LAST_MODIFIED = "2026-05-15T00:00:00.000Z";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const revalidate = 604800;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const SITE = getSiteUrl();
 
   const staticEntries: MetadataRoute.Sitemap = [
@@ -25,15 +26,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  const bookEntries: MetadataRoute.Sitemap = getAllBooks().map((b) => ({
+  const [books, hadithIds] = await Promise.all([getAllBooks(), getAllHadithIds()]);
+
+  const bookEntries: MetadataRoute.Sitemap = books.map((b) => ({
     url: `${SITE}/browse/${b.book_number}`,
     lastModified: LAST_MODIFIED,
     changeFrequency: "monthly",
     priority: 0.7,
   }));
 
-  const hadithEntries: MetadataRoute.Sitemap = getAllHadiths().map((h) => ({
-    url: `${SITE}/hadith/${encodeURIComponent(h.id)}`,
+  // IDs are "bukhari:N" — `:` is a valid path-segment character (RFC 3986),
+  // and Next.js routes accept it unencoded, so we emit clean URLs for crawlers.
+  const hadithEntries: MetadataRoute.Sitemap = hadithIds.map((id) => ({
+    url: `${SITE}/hadith/${id}`,
     lastModified: LAST_MODIFIED,
     changeFrequency: "yearly",
     priority: 0.6,

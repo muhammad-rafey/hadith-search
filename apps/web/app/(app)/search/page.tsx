@@ -2,12 +2,13 @@
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
-import { MOCK_BOOKS, type SearchRequest, type SearchResult } from "@hadith/shared-types";
+import { useQuery } from "@tanstack/react-query";
+import type { SearchRequest, SearchResult } from "@hadith/shared-types";
 import { SearchBox } from "@/components/search-box";
 import { ResultList } from "@/components/result-list";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useSearch } from "@/lib/queries/use-search";
+import { canonicalKey, useSearch } from "@/lib/queries/use-search";
 import { useUiStore } from "@/lib/store";
 import {
   searchResultClicked,
@@ -17,7 +18,10 @@ import {
 } from "@/lib/analytics";
 import { tokenizeQuery } from "@/lib/highlight";
 
-const DEBOUNCE_MS = 250;
+const QUERY_DEBOUNCE_MS = 250;
+const NARRATOR_DEBOUNCE_MS = 200;
+
+type BookOption = { book_number: number; book_name_en: string; hadith_count: number };
 
 export default function SearchPage() {
   return (
@@ -33,12 +37,16 @@ function SearchPageInner() {
   const setLastQuery = useUiStore((s) => s.setLastQuery);
   const bookFilter = useUiStore((s) => s.bookFilter);
   const narratorFilter = useUiStore((s) => s.narratorFilter);
+  // Subscribe to privateMode so a Settings-side toggle re-issues searches
+  // with skip_cache: true instead of returning a stale cache.
+  const privateMode = useUiStore((s) => s.privateMode);
   const setBookFilter = useUiStore((s) => s.setBookFilter);
   const setNarratorFilter = useUiStore((s) => s.setNarratorFilter);
   const clearFilters = useUiStore((s) => s.clearFilters);
 
   const [query, setQuery] = React.useState(initial);
   const [debounced, setDebounced] = React.useState(initial);
+  const [debouncedNarrator, setDebouncedNarrator] = React.useState(narratorFilter);
   const search = useSearch();
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [hasQuery, setHasQuery] = React.useState(initial.trim().length > 0);
@@ -46,26 +54,28 @@ function SearchPageInner() {
   // so click analytics references the actual query hash, not the latest input.
   const [resultQueryHash, setResultQueryHash] = React.useState<string>("");
 
-  // Debounce the input by DEBOUNCE_MS.
+  const booksQuery = useQuery<BookOption[]>({
+    queryKey: ["books"],
+    queryFn: async () => {
+      const res = await fetch("/api/books");
+      if (!res.ok) throw new Error("failed to load books");
+      return res.json();
+    },
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+
   React.useEffect(() => {
-    const t = setTimeout(() => setDebounced(query), DEBOUNCE_MS);
+    const t = setTimeout(() => setDebounced(query), QUERY_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [query]);
 
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebouncedNarrator(narratorFilter), NARRATOR_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [narratorFilter]);
+
   const mutateAsync = search.mutateAsync;
 
-  // Canonical form matches the Edge Function's hash key:
-  // language + "|" + (book ?? "") + "|" + (narrator ?? "") + "|" + trimmed_lowercase_query
-  function canonicalize(vars: SearchRequest): string {
-    return [
-      vars.language,
-      String(vars.book ?? ""),
-      (vars.narrator ?? "").trim(),
-      vars.query.trim().toLowerCase(),
-    ].join("|");
-  }
-
-  // Fire the search whenever the debounced query or filters change.
   // biome-ignore lint/correctness/useExhaustiveDependencies: mutateAsync is stable
   React.useEffect(() => {
     const trimmed = debounced.trim();
@@ -82,26 +92,34 @@ function SearchPageInner() {
       language: "en",
       topK: 10,
       ...(bookFilter ? { book: bookFilter } : {}),
-      ...(narratorFilter.trim() ? { narrator: narratorFilter.trim() } : {}),
-      skip_cache: useUiStore.getState().privateMode,
+      ...(debouncedNarrator.trim() ? { narrator: debouncedNarrator.trim() } : {}),
+      skip_cache: privateMode,
     };
 
     let cancelled = false;
     (async () => {
-      const queryHash = await sha256Hex(canonicalize(vars));
+      const queryHash = await sha256Hex(
+        canonicalKey({
+          language: vars.language,
+          book: vars.book ?? null,
+          narrator: vars.narrator ?? null,
+          query: vars.query,
+        }),
+      );
+      // Fire submitted before the network call so the analytics denominator
+      // includes failures, not just successes.
+      searchSubmitted({
+        query_hash: queryHash,
+        query_length: trimmed.length,
+        language: vars.language,
+        has_book_filter: !!vars.book,
+        has_narrator_filter: !!vars.narrator,
+      });
       try {
         const data = await mutateAsync(vars);
         if (cancelled) return;
         setResults(data.results);
-        // Store the hash that produced this result set for click analytics.
         setResultQueryHash(queryHash);
-        searchSubmitted({
-          query_hash: queryHash,
-          query_length: trimmed.length,
-          language: vars.language,
-          has_book_filter: !!vars.book,
-          has_narrator_filter: !!vars.narrator,
-        });
         searchResultsReturned({
           query_hash: queryHash,
           result_count: data.results.length,
@@ -117,15 +135,13 @@ function SearchPageInner() {
     return () => {
       cancelled = true;
     };
-  }, [debounced, bookFilter, narratorFilter, setLastQuery]);
+  }, [debounced, bookFilter, debouncedNarrator, privateMode, setLastQuery]);
 
   const tokens = React.useMemo(() => tokenizeQuery(debounced), [debounced]);
 
   const onResultClick = React.useCallback(
     (result: SearchResult, position: number) => {
       searchResultClicked({
-        // Use the hash of the query that produced the current results, not
-        // the latest (possibly mid-typing) input.
         query_hash: resultQueryHash,
         hadith_id: result.id,
         position,
@@ -135,7 +151,6 @@ function SearchPageInner() {
     [resultQueryHash],
   );
 
-  // aria-live status message — always in the DOM so screen readers track it.
   let statusMessage = "";
   if (hasQuery) {
     if (search.isPending) {
@@ -158,7 +173,6 @@ function SearchPageInner() {
 
       <SearchBox value={query} onChange={setQuery} loading={search.isPending} autoFocus />
 
-      {/* Always rendered so aria-live is in the DOM from the start */}
       <output aria-live="polite" aria-atomic="true" className="sr-only">
         {statusMessage}
       </output>
@@ -168,26 +182,27 @@ function SearchPageInner() {
           Filters
         </legend>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-[hsl(var(--muted-foreground))]">Book:</span>
-          <Button
-            type="button"
-            size="sm"
-            variant={bookFilter === null ? "default" : "outline"}
-            onClick={() => setBookFilter(null)}
+          <label
+            htmlFor="book-filter"
+            className="text-xs text-[hsl(var(--muted-foreground))]"
           >
-            All
-          </Button>
-          {MOCK_BOOKS.map((b) => (
-            <Button
-              key={b.book_number}
-              type="button"
-              size="sm"
-              variant={bookFilter === b.book_number ? "default" : "outline"}
-              onClick={() => setBookFilter(b.book_number)}
-            >
-              {b.book_name_en}
-            </Button>
-          ))}
+            Book:
+          </label>
+          <select
+            id="book-filter"
+            value={bookFilter ?? ""}
+            onChange={(e) =>
+              setBookFilter(e.target.value === "" ? null : Number(e.target.value))
+            }
+            className="h-9 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-sm"
+          >
+            <option value="">All books</option>
+            {(booksQuery.data ?? []).map((b) => (
+              <option key={b.book_number} value={b.book_number}>
+                {b.book_name_en} ({b.hadith_count})
+              </option>
+            ))}
+          </select>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor="narrator-filter" className="text-xs text-[hsl(var(--muted-foreground))]">
@@ -214,6 +229,7 @@ function SearchPageInner() {
         error={search.error}
         hasQuery={hasQuery}
         queryTokens={tokens}
+        queryHash={resultQueryHash}
         onResultClick={onResultClick}
       />
     </div>

@@ -61,9 +61,7 @@ export function HadithCard({ result, position, queryTokens, queryHash, onClick }
             "relative z-10 flex items-center justify-between pt-2 text-xs text-[hsl(var(--muted-foreground))]",
           )}
         >
-          <span>
-            Book {result.book_number} · {result.book_name_en}
-          </span>
+          <span>{result.book_name_en}</span>
           <div className="flex items-center gap-3">
             {queryHash ? (
               <FeedbackThumbs

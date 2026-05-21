@@ -8,13 +8,16 @@ import { ViewTracker } from "./view-tracker";
 import { getHadithById } from "@/lib/hadiths";
 import { getSiteUrl } from "@/lib/site";
 
+export const revalidate = 86400;
+
 interface Params {
   params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
-  const h = getHadithById(decodeURIComponent(id));
+  // Next.js already decodes route params — no double-decode.
+  const h = await getHadithById(id);
   if (!h) return { title: "Hadith not found" };
   const description = h.text_en.slice(0, 150);
   const title = `Sahih al-Bukhari ${h.hadith_number}${
@@ -35,8 +38,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function HadithDetailPage({ params }: Params) {
   const { id } = await params;
-  const decoded = decodeURIComponent(id);
-  const h = getHadithById(decoded);
+  const h = await getHadithById(id);
   if (!h) notFound();
 
   const grade = h.grades?.[0];
@@ -64,8 +66,10 @@ export default async function HadithDetailPage({ params }: Params) {
     <article className="mx-auto max-w-3xl space-y-6">
       <script
         type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted static JSON-LD
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted JSON-LD; `</` escaped to prevent script-tag breakout via narrator/title text
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(articleJsonLd).replace(/</g, "\\u003c"),
+        }}
       />
 
       <ViewTracker hadithId={h.id} />
@@ -73,7 +77,7 @@ export default async function HadithDetailPage({ params }: Params) {
       <header className="space-y-2 border-b border-[hsl(var(--border))] pb-4">
         <p className="text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
           <Link href={`/browse/${h.book_number}`} className="hover:underline">
-            Book {h.book_number} · {h.book_name_en}
+            {h.book_name_en}
           </Link>
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">
@@ -120,7 +124,7 @@ export default async function HadithDetailPage({ params }: Params) {
         <h2 className="text-sm font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
           English
         </h2>
-        <p className="text-lg leading-relaxed">{h.text_en_full}</p>
+        <p className="whitespace-pre-line text-lg leading-relaxed">{h.text_en_full}</p>
       </section>
 
       <footer className="flex flex-wrap items-center gap-2 border-t border-[hsl(var(--border))] pt-4">

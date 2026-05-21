@@ -1,24 +1,46 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as React from "react";
-import { FlatList, View } from "react-native";
-import type { Hadith } from "@hadith/shared-types";
+import { ActivityIndicator, FlatList, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 import { EmptyState } from "@/components/empty-state";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
-import { type BookSummary, getBookByNumber, getHadithsForBook } from "@/lib/hadiths";
+import { getBookByNumber, getHadithsForBook } from "@/lib/hadiths";
 
-/**
- * Hadiths in a book — mirrors apps/web/app/(app)/browse/[book]/page.tsx,
- * including the not-found path for an out-of-range book number.
- */
 export default function BookScreen() {
   const router = useRouter();
-  const { book } = useLocalSearchParams<{ book: string }>();
-  const n = Number.parseInt(String(book), 10);
+  const { book } = useLocalSearchParams<{ book: string | string[] }>();
+  // expo-router can return either string or string[] for dynamic segments —
+  // pick the first when it's an array so we don't accidentally parseInt
+  // "1,2" to 1 for a route like /browse/1/2.
+  const bookParam = Array.isArray(book) ? book[0] : book;
+  const n = Number.parseInt(bookParam ?? "", 10);
 
-  const meta: BookSummary | null = Number.isFinite(n) ? getBookByNumber(n) : null;
-  const hadiths: Hadith[] = meta ? getHadithsForBook(n) : [];
+  const metaQuery = useQuery({
+    queryKey: ["book-meta", n],
+    queryFn: () => getBookByNumber(n),
+    enabled: Number.isFinite(n),
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+  const hadithsQuery = useQuery({
+    queryKey: ["book-hadiths", n],
+    queryFn: () => getHadithsForBook(n),
+    enabled: Number.isFinite(n),
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+
+  const meta = metaQuery.data ?? null;
+  const hadiths = hadithsQuery.data ?? [];
+
+  if (metaQuery.isLoading || hadithsQuery.isLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-background">
+        <Stack.Screen options={{ title: "Loading…" }} />
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
   if (!meta) {
     return (
@@ -36,7 +58,7 @@ export default function BookScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <Stack.Screen options={{ title: `Book ${meta.book_number}` }} />
+      <Stack.Screen options={{ title: meta.book_name_en }} />
       <FlatList
         data={hadiths}
         keyExtractor={(h) => h.id}
@@ -44,12 +66,9 @@ export default function BookScreen() {
         ListHeaderComponent={
           <View className="pb-1">
             <Text size="xs" weight="medium" className="uppercase text-muted-foreground">
-              Book {meta.book_number}
-            </Text>
-            <Text size="2xl" weight="semibold">
               {meta.book_name_en}
             </Text>
-            <Text size="sm" className="mt-1 text-muted-foreground">
+            <Text size="2xl" weight="semibold">
               {hadiths.length} hadith{hadiths.length === 1 ? "" : "s"}
             </Text>
           </View>
