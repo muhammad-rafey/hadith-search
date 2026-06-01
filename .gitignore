@@ -42,6 +42,8 @@ pnpm-debug.log*
 # Supabase
 supabase/.branches/
 supabase/.temp/
+# Generated corpus seed (regenerable via scripts/convert_hadith_dump.py)
+supabase/seed/
 
 # Testing
 coverage/

@@ -47,6 +47,14 @@ export const useBookmarks = create<BookmarksState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ ids: state.ids }),
       version: 1,
+      // Pre-v1 builds persisted this store with no version field (read back as
+      // version 0). Without a migrate, Zustand logs "State loaded from storage
+      // couldn't be migrated…". The shape ({ ids }) is unchanged, so adopt the
+      // stored IDs as-is; persist re-saves at v1 afterwards, so it self-heals.
+      migrate: (persisted) => {
+        const prev = persisted as Partial<BookmarksState> | null | undefined;
+        return { ids: prev?.ids ?? [] } as BookmarksState;
+      },
     },
   ),
 );

@@ -52,6 +52,18 @@ export const useUiStore = create<UiState>()(
         showArabic: state.showArabic,
       }),
       version: 1,
+      // Pre-v1 builds persisted this store with no version field — Zustand reads
+      // that back as version 0, and without a migrate it logs "State loaded from
+      // storage couldn't be migrated…". The old shape predates showArabic, so
+      // carry the stored prefs forward; new keys fall back to their defaults.
+      // persist re-saves at the current version after this runs, so it self-heals.
+      migrate: (persisted) => {
+        const prev = persisted as Partial<UiState> | null | undefined;
+        return {
+          privateMode: prev?.privateMode ?? false,
+          showArabic: prev?.showArabic ?? true,
+        } as UiState;
+      },
     },
   ),
 );
