@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { collectionName } from "@hadith/shared-types";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { ShareButton } from "@/components/share-button";
 import { ArabicSection } from "./arabic-section";
@@ -9,6 +10,14 @@ import { getHadithById } from "@/lib/hadiths";
 import { getSiteUrl } from "@/lib/site";
 
 export const revalidate = 86400;
+
+/**
+ * Sunnah.com deep link for a hadith, e.g. "muslim:8a". The display label can
+ * contain spaces (a comma-joined "521, 522"); Sunnah.com expects them stripped.
+ */
+function sunnahComUrl(collection: string, label: string): string {
+  return `https://sunnah.com/${collection}:${label.replace(/\s+/g, "")}`;
+}
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -20,7 +29,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const h = await getHadithById(id);
   if (!h) return { title: "Hadith not found" };
   const description = h.text_en.slice(0, 150);
-  const title = `Sahih al-Bukhari ${h.hadith_number}${
+  const collection = collectionName(h.collection);
+  const title = `${collection} ${h.hadith_number_label}${
     h.chapter_title_en ? `: ${h.chapter_title_en}` : ""
   }`;
   const canonicalUrl = `${getSiteUrl()}/hadith/${h.id}`;
@@ -30,7 +40,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     alternates: {
       canonical: canonicalUrl,
       types: {
-        "text/html": `https://sunnah.com/bukhari:${h.hadith_number}`,
+        "text/html": sunnahComUrl(h.collection, h.hadith_number_label),
       },
     },
   };
@@ -42,13 +52,14 @@ export default async function HadithDetailPage({ params }: Params) {
   if (!h) notFound();
 
   const grade = h.grades?.[0];
+  const collection = collectionName(h.collection);
   const canonicalUrl = `${getSiteUrl()}/hadith/${h.id}`;
-  const sunnahUrl = `https://sunnah.com/bukhari:${h.hadith_number}`;
+  const sunnahUrl = sunnahComUrl(h.collection, h.hadith_number_label);
 
   const articleJsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
-    headline: `Sahih al-Bukhari ${h.hadith_number}${h.chapter_title_en ? `: ${h.chapter_title_en}` : ""}`,
+    headline: `${collection} ${h.hadith_number_label}${h.chapter_title_en ? `: ${h.chapter_title_en}` : ""}`,
     description: h.text_en.slice(0, 150),
     inLanguage: "en",
     mainEntityOfPage: {
@@ -58,7 +69,9 @@ export default async function HadithDetailPage({ params }: Params) {
     author: h.narrator ? { "@type": "Person", name: h.narrator } : undefined,
     publisher: {
       "@type": "Organization",
-      name: "Sunnah.com (translation by Muhsin Khan)",
+      // Generic across collections — "Muhsin Khan" is only Bukhari's translator,
+      // so it can't be the attribution for Muslim/Nasai/… pages.
+      name: "Sunnah.com",
     },
   };
 
@@ -76,12 +89,12 @@ export default async function HadithDetailPage({ params }: Params) {
 
       <header className="space-y-2 border-b border-[hsl(var(--border))] pb-4">
         <p className="text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-          <Link href={`/browse/${h.book_number}`} className="hover:underline">
-            {h.book_name_en}
+          <Link href={`/browse/${h.collection}`} className="hover:underline">
+            {collection}
           </Link>
         </p>
         <h1 className="text-3xl font-semibold tracking-tight">
-          Sahih al-Bukhari {h.hadith_number}
+          {collection} {h.hadith_number_label}
         </h1>
         {h.chapter_title_en ? (
           <p className="text-lg text-[hsl(var(--muted-foreground))]">{h.chapter_title_en}</p>
@@ -89,7 +102,9 @@ export default async function HadithDetailPage({ params }: Params) {
         <dl className="grid grid-cols-1 gap-x-6 gap-y-1 pt-2 text-xs text-[hsl(var(--muted-foreground))] sm:grid-cols-3">
           <div>
             <dt className="font-medium uppercase tracking-wider">Sunnah.com</dt>
-            <dd>bukhari:{h.hadith_number}</dd>
+            <dd>
+              {h.collection}:{h.hadith_number_label}
+            </dd>
           </div>
           <div>
             <dt className="font-medium uppercase tracking-wider">In-book</dt>

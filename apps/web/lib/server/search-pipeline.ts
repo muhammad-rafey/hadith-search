@@ -3,8 +3,9 @@ import "server-only";
 import {
   type BukhariRpcRow,
   BukhariRpcRowSchema,
+  HadithRowSchema,
   mapRowToSearchResult,
-  parseBukhariId,
+  mapSearchRow,
   type SearchRequest,
   type SearchResponse,
   SearchResponseSchema,
@@ -323,6 +324,7 @@ async function resolveReference(
   ref: Reference,
 ): Promise<SearchResult | null> {
   if (ref.kind === "by_book_and_seq") {
+    // bukhari-only (book+seq is unambiguous only for integer book numbers).
     const { data, error } = await supabase.rpc("get_bukhari_hadith_by_book_seq", {
       p_book: ref.book,
       p_seq: ref.seq,
@@ -333,32 +335,39 @@ async function resolveReference(
     const parsed = BukhariRpcRowSchema.safeParse(first);
     return parsed.success ? mapRowToSearchResult(parsed.data) : null;
   }
-  // by_urn_or_number — try URN first when the value is large enough; else
-  // hadithNumber. Fall through both if needed.
-  if (ref.value >= 10000) {
-    const byUrn = await lookupBy(supabase, "get_bukhari_hadith_by_urn", { p_urn: ref.value });
-    if (byUrn) return byUrn;
-  }
-  const byNumber = await lookupBy(supabase, "get_bukhari_hadith_by_number", { p_n: ref.value });
+  // by_number — match the canonical hadithNumber for the collection. If that
+  // misses and the value is all-digits, fall back to a URN lookup (covers a
+  // permalink-style "{collection}:{urn}" pasted into the search box).
+  const byNumber = await resolveGeneric(supabase, "get_hadith_by_collection_number", {
+    p_collection: ref.collection,
+    p_number: ref.value,
+  });
   if (byNumber) return byNumber;
-  if (ref.value < 10000) {
-    return lookupBy(supabase, "get_bukhari_hadith_by_urn", { p_urn: ref.value });
+  if (/^\d+$/.test(ref.value)) {
+    const urn = Number.parseInt(ref.value, 10);
+    // Cap at int4 max — a larger value can't be a real URN and would overflow
+    // the p_urn int parameter (Postgres 22003).
+    if (Number.isFinite(urn) && urn <= 2_147_483_647) {
+      return resolveGeneric(supabase, "get_hadith_by_collection_urn", {
+        p_collection: ref.collection,
+        p_urn: urn,
+      });
+    }
   }
   return null;
 }
 
-async function lookupBy(
+async function resolveGeneric(
   supabase: ReturnType<typeof getSupabaseAdmin>,
-  rpc: "get_bukhari_hadith_by_urn" | "get_bukhari_hadith_by_number",
+  rpc: "get_hadith_by_collection_number" | "get_hadith_by_collection_urn",
   args: Record<string, unknown>,
 ): Promise<SearchResult | null> {
   const { data, error } = await supabase.rpc(rpc, args);
   if (error || !data) return null;
-  const rows = data as unknown[];
-  const first = rows[0];
+  const first = (data as unknown[])[0];
   if (!first) return null;
-  const parsed = BukhariRpcRowSchema.safeParse(first);
-  return parsed.success ? mapRowToSearchResult(parsed.data) : null;
+  const parsed = HadithRowSchema.safeParse(first);
+  return parsed.success ? mapSearchRow(parsed.data) : null;
 }
 
 // ── Cache + log helpers ─────────────────────────────────────────────────────
@@ -428,9 +437,4 @@ async function logSearch(
   if (error) {
     console.error("search_logs insert failed:", error.message.slice(0, 200));
   }
-}
-
-/** Exported for the bookmark page bulk lookup. */
-export function parseBukhariIdsBulk(ids: string[]): number[] {
-  return ids.map(parseBukhariId).filter((n): n is number => typeof n === "number");
 }

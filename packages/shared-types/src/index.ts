@@ -21,7 +21,11 @@ export type SearchRequest = z.infer<typeof SearchRequestSchema>;
 
 export const SearchResultSchema = z.object({
   id: z.string(),
+  /** Collection slug, e.g. "bukhari" / "muslim". Parsed from `id`. */
+  collection: z.string(),
   hadith_number: z.number().int(),
+  /** Display reference, e.g. "8a" / "521, 522". Use this over hadith_number for UI. */
+  hadith_number_label: z.string(),
   book_number: z.number().int(),
   book_name_en: z.string(),
   chapter_title_en: z.string().nullable(),
@@ -55,6 +59,8 @@ export const HadithSchema = z.object({
   id: z.string(),
   collection: z.string(),
   hadith_number: z.number().int(),
+  /** Display reference, e.g. "8a" / "521, 522". Use this over hadith_number for UI. */
+  hadith_number_label: z.string(),
   arabic_number: z.number().int().nullable(),
   book_number: z.number().int(),
   book_name_en: z.string(),
@@ -117,8 +123,24 @@ export {
 export {
   BukhariRpcRowSchema,
   type BukhariRpcRow,
+  HadithRowSchema,
+  type HadithRow,
   makeBukhariId,
   parseBukhariId,
+  makeHadithId,
+  parseHadithId,
   mapRowToSearchResult,
   mapRowToHadith,
+  mapSearchRow,
+  mapHadithRow,
 } from "./map";
+
+export {
+  type CollectionMeta,
+  COLLECTION_ORDER,
+  collectionName,
+  collectionArabicName,
+  isKnownCollection,
+  collectionMeta,
+  collectionSortIndex,
+} from "./collections";

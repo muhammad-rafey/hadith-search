@@ -3,9 +3,11 @@
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { Filter, Info, Compass } from "lucide-react";
 import type { SearchRequest, SearchResult } from "@hadith/shared-types";
 import { SearchBox } from "@/components/search-box";
 import { ResultList } from "@/components/result-list";
+import { JumpToHadith } from "@/components/jump-to-hadith";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canonicalKey, useSearch } from "@/lib/queries/use-search";
@@ -151,6 +153,8 @@ function SearchPageInner() {
     [resultQueryHash],
   );
 
+  const hasFilters = bookFilter !== null || narratorFilter.trim().length > 0;
+
   let statusMessage = "";
   if (hasQuery) {
     if (search.isPending) {
@@ -167,7 +171,9 @@ function SearchPageInner() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Search</h1>
         <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-          Sahih al-Bukhari · semantic + keyword retrieval.
+          AI semantic search across{" "}
+          <span className="font-medium text-[hsl(var(--foreground))]">Sahih al-Bukhari</span> —
+          meaning and keyword combined.
         </p>
       </div>
 
@@ -177,46 +183,15 @@ function SearchPageInner() {
         {statusMessage}
       </output>
 
-      <fieldset className="space-y-3 rounded-md border border-[hsl(var(--border))] p-3">
-        <legend className="px-1 text-xs font-medium uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
-          Filters
-        </legend>
-        <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="book-filter" className="text-xs text-[hsl(var(--muted-foreground))]">
-            Book:
-          </label>
-          <select
-            id="book-filter"
-            value={bookFilter ?? ""}
-            onChange={(e) => setBookFilter(e.target.value === "" ? null : Number(e.target.value))}
-            className="h-9 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-sm"
-          >
-            <option value="">All books</option>
-            {(booksQuery.data ?? []).map((b) => (
-              <option key={b.book_number} value={b.book_number}>
-                {b.book_name_en} ({b.hadith_count})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label htmlFor="narrator-filter" className="text-xs text-[hsl(var(--muted-foreground))]">
-            Narrator:
-          </label>
-          <Input
-            id="narrator-filter"
-            placeholder="e.g. Abu Hurairah"
-            value={narratorFilter}
-            onChange={(e) => setNarratorFilter(e.target.value)}
-            className="h-9 max-w-xs"
-          />
-          {(bookFilter !== null || narratorFilter) && (
-            <Button type="button" size="sm" variant="ghost" onClick={clearFilters}>
-              Clear filters
-            </Button>
-          )}
-        </div>
-      </fieldset>
+      <SearchFilters
+        bookFilter={bookFilter}
+        narratorFilter={narratorFilter}
+        books={booksQuery.data ?? []}
+        hasFilters={hasFilters}
+        onBookChange={setBookFilter}
+        onNarratorChange={setNarratorFilter}
+        onClear={clearFilters}
+      />
 
       <ResultList
         results={results}
@@ -227,6 +202,125 @@ function SearchPageInner() {
         queryHash={resultQueryHash}
         onResultClick={onResultClick}
       />
+
+      <JumpPanel />
     </div>
+  );
+}
+
+interface SearchFiltersProps {
+  bookFilter: number | null;
+  narratorFilter: string;
+  books: BookOption[];
+  hasFilters: boolean;
+  onBookChange: (n: number | null) => void;
+  onNarratorChange: (s: string) => void;
+  onClear: () => void;
+}
+
+/**
+ * Filters that narrow the Sahih al-Bukhari semantic search (book + narrator,
+ * both POSTed to /api/search). Presented as a clean labelled panel; the
+ * collection-wide affordances live in <JumpPanel> below the results.
+ */
+function SearchFilters({
+  bookFilter,
+  narratorFilter,
+  books,
+  hasFilters,
+  onBookChange,
+  onNarratorChange,
+  onClear,
+}: SearchFiltersProps) {
+  return (
+    <section
+      aria-labelledby="search-filters-heading"
+      className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]"
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-[hsl(var(--border))] px-4 py-2.5">
+        <h2
+          id="search-filters-heading"
+          className="flex items-center gap-2 text-sm font-medium text-[hsl(var(--foreground))]"
+        >
+          <Filter className="h-4 w-4 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+          Refine your search
+        </h2>
+        {hasFilters ? (
+          <Button type="button" size="sm" variant="ghost" onClick={onClear}>
+            Clear
+          </Button>
+        ) : null}
+      </div>
+      <div className="grid gap-4 p-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label
+            htmlFor="book-filter"
+            className="block text-xs font-medium text-[hsl(var(--muted-foreground))]"
+          >
+            Book
+          </label>
+          <select
+            id="book-filter"
+            value={bookFilter ?? ""}
+            onChange={(e) => onBookChange(e.target.value === "" ? null : Number(e.target.value))}
+            className="h-10 w-full rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--background))]"
+          >
+            <option value="">All books</option>
+            {books.map((b) => (
+              <option key={b.book_number} value={b.book_number}>
+                {b.book_name_en} ({b.hadith_count})
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label
+            htmlFor="narrator-filter"
+            className="block text-xs font-medium text-[hsl(var(--muted-foreground))]"
+          >
+            Narrator
+          </label>
+          <Input
+            id="narrator-filter"
+            placeholder="e.g. Abu Hurairah"
+            value={narratorFilter}
+            onChange={(e) => onNarratorChange(e.target.value)}
+            className="h-10"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Collection-wide deep link. Semantic search is Bukhari-only, but every one of
+ * the fifteen collections is reachable by hadith number — this panel uses the
+ * lookup endpoint (via <JumpToHadith>) to jump straight to a known reference.
+ */
+function JumpPanel() {
+  return (
+    <section
+      aria-labelledby="jump-panel-heading"
+      className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted))]/30 p-4"
+    >
+      <h2
+        id="jump-panel-heading"
+        className="flex items-center gap-2 text-sm font-medium text-[hsl(var(--foreground))]"
+      >
+        <Compass className="h-4 w-4 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
+        Jump to a hadith
+      </h2>
+      <p className="mt-1 flex items-start gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <span>
+          Know the reference? Pick a collection and enter its number to open it directly — works
+          across all fifteen collections.
+        </span>
+      </p>
+      <div className="mt-3">
+        <JumpToHadith />
+      </div>
+    </section>
   );
 }

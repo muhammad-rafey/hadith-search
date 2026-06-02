@@ -75,8 +75,11 @@ export function ResultList({
     if (!hasQuery) {
       return (
         <EmptyState
-          title="Search the corpus"
-          description='Enter a query to begin. Try "intentions" or "bukhari:1".'
+          title="Search Sahih al-Bukhari"
+          description={
+            'Enter a query to begin. Try "intentions" or "bukhari:1". ' +
+            "Browse covers all collections."
+          }
         />
       );
     }

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { collectionName } from "./collections";
 import {
   cleanArabicText,
   extractNarratorFromEnglish,
@@ -8,10 +9,32 @@ import {
 import type { Hadith, SearchResult } from "./index";
 
 /**
- * Shape returned by the Bukhari RPCs (search_bukhari_hybrid,
- * get_bukhari_book_hadiths, get_bukhari_hadith_by_urn, ...). Field names use
- * snake_case to match the RPC return columns; the row mappers translate to
- * the camelCase / display-ready types the front-end already consumes.
+ * Generic row returned by the collection-aware RPCs (0016): get_collection_hadiths,
+ * get_hadith_by_collection_urn, get_hadith_by_collection_number. Unlike the
+ * bukhari RPCs, `book_number_raw` and `hadith_number_raw` are TEXT — across the
+ * full corpus book numbers can be 'introduction' / '35b' and hadith numbers can
+ * be '8 a' / '1001b' / comma-joined '521, 522'.
+ */
+export const HadithRowSchema = z.object({
+  collection: z.string(),
+  arabic_urn: z.number().int(),
+  book_number_raw: z.string().nullable(),
+  hadith_number_raw: z.string().nullable(),
+  our_hadith_number: z.number().int().nullable(),
+  english_bab_name: z.string().nullable(),
+  arabic_bab_name: z.string().nullable(),
+  english_text: z.string().nullable(),
+  arabic_text: z.string().nullable(),
+  english_grade: z.string().nullable(),
+  arabic_grade: z.string().nullable(),
+  score: z.number().optional(),
+});
+export type HadithRow = z.infer<typeof HadithRowSchema>;
+
+/**
+ * Shape returned by the legacy bukhari RPCs (search_bukhari_hybrid,
+ * get_bukhari_book_hadiths, get_bukhari_hadith_by_urn, ...). `book_number` is an
+ * int here because those RPCs cast it; the generic RPCs return text instead.
  */
 export const BukhariRpcRowSchema = z.object({
   arabic_urn: z.number().int(),
@@ -29,93 +52,143 @@ export const BukhariRpcRowSchema = z.object({
 export type BukhariRpcRow = z.infer<typeof BukhariRpcRowSchema>;
 
 /**
- * Build the canonical "bukhari:URN" id. URN is unique across the corpus and
- * stable across re-ingest, so it's a better permalink target than hadithNumber
- * (which can be comma-joined like "521, 522" for combined-narration entries).
+ * Build the canonical "{collection}:{urn}" id. URN is unique across the corpus
+ * and stable across re-ingest, so it's a better permalink target than
+ * hadithNumber (which can be comma-joined like "521, 522" or carry a letter
+ * suffix like "8 a").
  */
-export function makeBukhariId(arabicURN: number): string {
-  return `bukhari:${arabicURN}`;
+export function makeHadithId(collection: string, arabicURN: number): string {
+  return `${collection}:${arabicURN}`;
 }
 
 /**
- * Parse a "bukhari:N" id into its integer component. Returns null for any
- * other shape so callers can 404 cleanly.
+ * Parse a "{collection}:{urn}" id into its parts. Returns null for any other
+ * shape so callers can 404 cleanly. The collection is lowercased.
  */
-export function parseBukhariId(id: string): number | null {
-  const m = id.match(/^bukhari:(\d+)$/i);
+export function parseHadithId(id: string): { collection: string; urn: number } | null {
+  const m = id.match(/^([a-z][a-z0-9_-]*):(\d+)$/i);
   if (!m) return null;
-  const n = Number.parseInt(m[1] ?? "", 10);
-  return Number.isFinite(n) ? n : null;
+  const urn = Number.parseInt(m[2] ?? "", 10);
+  if (!Number.isFinite(urn)) return null;
+  return { collection: (m[1] ?? "").toLowerCase(), urn };
+}
+
+/** Back-compat: build a "bukhari:URN" id. Prefer makeHadithId for new code. */
+export function makeBukhariId(arabicURN: number): string {
+  return makeHadithId("bukhari", arabicURN);
+}
+
+/** Back-compat: parse "bukhari:N" → N (null for any other collection/shape). */
+export function parseBukhariId(id: string): number | null {
+  const parsed = parseHadithId(id);
+  return parsed && parsed.collection === "bukhari" ? parsed.urn : null;
 }
 
 /**
- * Pull the canonical (global Bukhari) hadith number out of the raw varchar
- * field. Combined-narration entries are stored as comma-joined values like
- * "521, 522" — we use the first number for the display + canonical link,
- * and pass the raw value through as `hadith_number_label` for fidelity.
+ * Pull the canonical hadith number out of the raw varchar field for the
+ * numeric `hadith_number` (used for sorting / a stable fallback). Combined
+ * narrations are comma-joined ("521, 522") and some collections add a letter
+ * suffix ("8 a") — we take the first integer.
  */
 function parsePrimaryHadithNumber(raw: string | null): number | null {
   if (!raw) return null;
   const first = raw.split(",")[0]?.trim();
   if (!first) return null;
-  const n = Number.parseInt(first, 10);
+  const m = first.match(/\d+/);
+  if (!m) return null;
+  const n = Number.parseInt(m[0], 10);
   return Number.isFinite(n) ? n : null;
 }
 
 /**
- * Map a raw RPC row to the SearchResult contract the front-end already speaks.
- * Cleans markup, extracts the narrator, and synthesizes the reference labels.
+ * Tidy the display reference: "8 a" → "8a", trims surrounding space, keeps
+ * comma-joined values ("521, 522") intact. Returns null for empty input.
  */
-export function mapRowToSearchResult(row: BukhariRpcRow): SearchResult {
-  const book = row.book_number ?? 0;
+function normalizeHadithNumberLabel(raw: string | null): string | null {
+  if (!raw) return null;
+  const t = raw.trim();
+  if (!t) return null;
+  return t.replace(/(\d)\s+([A-Za-z])/g, "$1$2");
+}
+
+/**
+ * Map a raw book-number string to a best-effort int (for the legacy book
+ * filter / sorting) plus a human label. "introduction" → { num: 0,
+ * label: "Introduction" }; "35b" → { num: 35, label: "Book 35b" }.
+ */
+function parseBookNumber(raw: string | null): { num: number; label: string | null } {
+  if (!raw) return { num: 0, label: null };
+  const t = raw.trim();
+  if (!t) return { num: 0, label: null };
+  if (t.toLowerCase() === "introduction") return { num: 0, label: "Introduction" };
+  const m = t.match(/^(\d+)/);
+  const num = m ? Number.parseInt(m[1] ?? "", 10) : 0;
+  return { num: Number.isFinite(num) ? num : 0, label: `Book ${t}` };
+}
+
+function inBookRef(bookLabel: string | null, seq: number): string {
+  return `${bookLabel ?? "Book 0"}, Hadith ${seq}`;
+}
+
+const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
+
+/**
+ * Map a generic collection RPC row to the SearchResult contract. Cleans markup,
+ * extracts the narrator, and synthesizes the reference labels.
+ */
+export function mapSearchRow(row: HadithRow): SearchResult {
   const seq = row.our_hadith_number ?? 0;
+  const numLabel = normalizeHadithNumberLabel(row.hadith_number_raw);
   const globalN = parsePrimaryHadithNumber(row.hadith_number_raw) ?? seq;
+  const { num: book, label: bookLabel } = parseBookNumber(row.book_number_raw);
   const cleanedAr = cleanArabicText(row.arabic_text);
   const narrator = extractNarratorFromEnglish(row.english_text);
   return {
-    id: makeBukhariId(row.arabic_urn),
+    id: makeHadithId(row.collection, row.arabic_urn),
+    collection: row.collection,
     hadith_number: globalN,
+    hadith_number_label: numLabel ?? String(globalN),
     book_number: book,
-    book_name_en: `Book ${book}`,
+    book_name_en: bookLabel ?? `Book ${book}`,
     chapter_title_en: row.english_bab_name?.trim() || null,
-    in_book_ref: `Book ${book}, Hadith ${seq}`,
+    in_book_ref: inBookRef(bookLabel, seq),
     usc_msa_ref: null,
     narrator,
     text_en_full: stripNarratorPrefix(row.english_text),
     text_ar: cleanedAr || null,
-    ...(typeof row.score === "number" ? { relevance: Math.max(0, Math.min(1, row.score)) } : {}),
+    ...(typeof row.score === "number" ? { relevance: clamp01(row.score) } : {}),
   };
 }
 
 /**
- * Map a raw RPC row to the richer Hadith record used by detail / browse pages.
- * Includes grades and uses the global Bukhari hadith number as the canonical
- * display number (which matches Sunnah.com permalink conventions).
+ * Map a generic collection RPC row to the richer Hadith record used by detail /
+ * browse pages. The grade's grader is the collection's display name.
  */
-export function mapRowToHadith(row: BukhariRpcRow): Hadith {
-  const book = row.book_number ?? 0;
+export function mapHadithRow(row: HadithRow): Hadith {
   const seq = row.our_hadith_number ?? 0;
+  const numLabel = normalizeHadithNumberLabel(row.hadith_number_raw);
   const globalN = parsePrimaryHadithNumber(row.hadith_number_raw) ?? seq;
+  const { num: book, label: bookLabel } = parseBookNumber(row.book_number_raw);
   const cleanedAr = cleanArabicText(row.arabic_text);
   // Body-only English (narrator prefix removed). Every consumer renders the
-  // narrator on its own line, so keeping the "Narrated X:" prefix in the text
-  // fields would print the narrator twice. Mirrors mapRowToSearchResult.
+  // narrator on its own line, so keeping "Narrated X:" would print it twice.
   const bodyEn = stripNarratorPrefix(row.english_text);
   const narrator = extractNarratorFromEnglish(row.english_text);
   const grades: { grader: string; grade: string }[] = [];
   if (row.english_grade) {
-    grades.push({ grader: "Sahih al-Bukhari", grade: row.english_grade });
+    grades.push({ grader: collectionName(row.collection), grade: row.english_grade });
   }
   return {
-    id: makeBukhariId(row.arabic_urn),
-    collection: "bukhari",
+    id: makeHadithId(row.collection, row.arabic_urn),
+    collection: row.collection,
     hadith_number: globalN,
+    hadith_number_label: numLabel ?? String(globalN),
     arabic_number: null,
     book_number: book,
-    book_name_en: `Book ${book}`,
+    book_name_en: bookLabel ?? `Book ${book}`,
     chapter_number: null,
     chapter_title_en: row.english_bab_name?.trim() || null,
-    in_book_ref: `Book ${book}, Hadith ${seq}`,
+    in_book_ref: inBookRef(bookLabel, seq),
     usc_msa_ref: null,
     narrator,
     narrator_normalized: narrator ? normalizeNarrator(narrator) : null,
@@ -126,4 +199,32 @@ export function mapRowToHadith(row: BukhariRpcRow): Hadith {
     urn: row.arabic_urn,
     language: "en",
   };
+}
+
+/** Adapt a legacy bukhari RPC row to the generic shape (collection = bukhari). */
+function bukhariRowToGeneric(row: BukhariRpcRow): HadithRow {
+  return {
+    collection: "bukhari",
+    arabic_urn: row.arabic_urn,
+    book_number_raw: row.book_number == null ? null : String(row.book_number),
+    hadith_number_raw: row.hadith_number_raw,
+    our_hadith_number: row.our_hadith_number,
+    english_bab_name: row.english_bab_name,
+    arabic_bab_name: row.arabic_bab_name,
+    english_text: row.english_text,
+    arabic_text: row.arabic_text,
+    english_grade: row.english_grade,
+    arabic_grade: row.arabic_grade,
+    ...(row.score !== undefined ? { score: row.score } : {}),
+  };
+}
+
+/** Map a legacy bukhari RPC row to SearchResult (delegates to the generic path). */
+export function mapRowToSearchResult(row: BukhariRpcRow): SearchResult {
+  return mapSearchRow(bukhariRowToGeneric(row));
+}
+
+/** Map a legacy bukhari RPC row to Hadith (delegates to the generic path). */
+export function mapRowToHadith(row: BukhariRpcRow): Hadith {
+  return mapHadithRow(bukhariRowToGeneric(row));
 }

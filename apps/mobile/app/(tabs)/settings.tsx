@@ -136,8 +136,9 @@ export default function SettingsScreen() {
         <CardHeader>
           <CardTitle>About</CardTitle>
           <CardDescription>
-            Semantic search over Sahih al-Bukhari. English translation by Dr. Muhsin Khan
-            (Darussalam). This is a companion to the web app and shares the same backend.
+            Semantic search over Sahih al-Bukhari, plus browse and number lookup across 15
+            collections. English translation by Dr. Muhsin Khan (Darussalam). This is a companion to
+            the web app and shares the same backend.
           </CardDescription>
         </CardHeader>
         <CardContent>

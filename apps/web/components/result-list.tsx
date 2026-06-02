@@ -63,7 +63,7 @@ export function ResultList({
 
       {!loading && !error && !hasQuery && (
         <p className="rounded-md border border-dashed border-[hsl(var(--border))] p-6 text-center text-sm text-[hsl(var(--muted-foreground))]">
-          Enter a query to search the corpus. Try{" "}
+          Enter a query to search Sahih al-Bukhari. Try{" "}
           <span className="font-medium">&ldquo;intentions&rdquo;</span> or{" "}
           <span className="font-medium">&ldquo;bukhari:1&rdquo;</span>.
         </p>

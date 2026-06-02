@@ -20,19 +20,19 @@ const amiri = Amiri({
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
-    default: "Hadith Search · Sahih al-Bukhari",
+    default: "Hadith Search · Hadith collections",
     template: "%s · Hadith Search",
   },
   description:
-    "Semantic search over Sahih al-Bukhari with full Arabic text, English translation, and references.",
+    "AI semantic search over Sahih al-Bukhari, plus browsing and number lookup across fifteen hadith collections — with full Arabic text, English translation, and references.",
   applicationName: "Hadith Search",
   authors: [{ name: "Hadith Search" }],
   openGraph: {
     type: "website",
     siteName: "Hadith Search",
-    title: "Hadith Search · Sahih al-Bukhari",
+    title: "Hadith Search · Hadith collections",
     description:
-      "Semantic search over Sahih al-Bukhari with full Arabic text, English translation, and references.",
+      "AI semantic search over Sahih al-Bukhari, plus browsing and number lookup across fifteen hadith collections — with full Arabic text, English translation, and references.",
   },
   twitter: { card: "summary_large_image" },
 };

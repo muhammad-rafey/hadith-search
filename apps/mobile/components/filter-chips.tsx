@@ -1,16 +1,20 @@
+import { X } from "lucide-react-native";
 import * as React from "react";
 import { FlatList, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { type BookSummary, getAllBooks } from "@/lib/hadiths";
 
 /**
- * Search filters. The book chips are populated by the same /api/books call
- * the Browse screen uses, so they stay in sync with the live corpus.
+ * Search filters for the bukhari semantic search (book + narrator → /api/search).
+ * Only bukhari is embedded, so these filters are scoped to Sahih al-Bukhari —
+ * the header says so explicitly. Browse + number lookup (elsewhere) cover all
+ * 15 collections.
  *
- * The book list uses a horizontal FlatList (not ScrollView) so all 97 books
+ * The book list uses a horizontal FlatList (not ScrollView) so all ~97 books
  * don't render up-front — only what's visible plus the next ~10 are mounted.
  */
 export function FilterChips({
@@ -42,6 +46,7 @@ export function FilterChips({
         size="sm"
         variant={bookFilter === item.book_number ? "default" : "outline"}
         onPress={() => onBookChange(item.book_number)}
+        accessibilityState={{ selected: bookFilter === item.book_number }}
       >
         {item.book_name_en}
       </Button>
@@ -52,10 +57,30 @@ export function FilterChips({
   const keyExtractor = React.useCallback((b: BookSummary) => String(b.book_number), []);
 
   return (
-    <View className="gap-3 rounded-md border border-border p-3">
-      <Text size="xs" weight="medium" className="uppercase text-muted-foreground">
-        Filters
-      </Text>
+    <View className="gap-3 rounded-lg border border-border bg-card p-3">
+      <View className="flex-row items-center justify-between gap-2">
+        <View className="flex-1">
+          <Text size="xs" weight="medium" className="uppercase text-muted-foreground">
+            Refine
+          </Text>
+          <Text size="xs" className="text-muted-foreground">
+            Filters apply to Sahih al-Bukhari.
+          </Text>
+        </View>
+        {hasFilters ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            onPress={onClear}
+            accessibilityLabel="Clear all filters"
+          >
+            <Icon as={X} size={14} token="foreground" />
+            <Text size="sm" weight="medium">
+              Clear
+            </Text>
+          </Button>
+        ) : null}
+      </View>
 
       <View className="gap-2">
         <Text size="xs" className="text-muted-foreground">
@@ -73,6 +98,7 @@ export function FilterChips({
               size="sm"
               variant={bookFilter === null ? "default" : "outline"}
               onPress={() => onBookChange(null)}
+              accessibilityState={{ selected: bookFilter === null }}
             >
               All
             </Button>
@@ -100,14 +126,6 @@ export function FilterChips({
           className="h-9"
         />
       </View>
-
-      {hasFilters ? (
-        <View className="items-start">
-          <Button size="sm" variant="ghost" onPress={onClear}>
-            Clear filters
-          </Button>
-        </View>
-      ) : null}
     </View>
   );
 }

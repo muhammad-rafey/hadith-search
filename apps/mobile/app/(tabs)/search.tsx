@@ -1,11 +1,15 @@
 import { useRouter } from "expo-router";
+import { ChevronDown, ChevronUp } from "lucide-react-native";
 import * as React from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { SearchRequest, SearchResult } from "@hadith/shared-types";
 import { FilterChips } from "@/components/filter-chips";
+import { Icon } from "@/components/icon";
+import { JumpToHadith } from "@/components/jump-to-hadith";
 import { ResultList } from "@/components/result-list";
 import { SearchBox } from "@/components/search-box";
+import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import {
   type SearchResultsReturnedProps,
@@ -45,6 +49,7 @@ export default function SearchScreen() {
   const [debouncedNarrator, setDebouncedNarrator] = React.useState(narratorFilter);
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [hasQuery, setHasQuery] = React.useState(lastQuery.trim().length > 0);
+  const [jumpOpen, setJumpOpen] = React.useState(false);
 
   const search = useSearch();
   const mutateAsync = search.mutateAsync;
@@ -197,6 +202,31 @@ export default function SearchScreen() {
               onNarratorChange={setNarratorFilter}
               onClear={clearFilters}
             />
+            <View className="rounded-lg border border-border bg-card">
+              <Pressable
+                haptic={false}
+                onPress={() => setJumpOpen((v) => !v)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: jumpOpen }}
+                accessibilityLabel="Jump to a hadith by collection and number"
+                className="flex-row items-center justify-between gap-2 p-3"
+              >
+                <View className="flex-1">
+                  <Text size="sm" weight="medium">
+                    Jump to a hadith
+                  </Text>
+                  <Text size="xs" className="text-muted-foreground">
+                    Any collection, by number (e.g. muslim 8a).
+                  </Text>
+                </View>
+                <Icon as={jumpOpen ? ChevronUp : ChevronDown} size={18} token="muted-foreground" />
+              </Pressable>
+              {jumpOpen ? (
+                <View className="border-t border-border p-3">
+                  <JumpToHadith from="search" />
+                </View>
+              ) : null}
+            </View>
           </View>
         }
       />

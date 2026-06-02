@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { BukhariRpcRowSchema, mapRowToHadith, parseBukhariId } from "@hadith/shared-types";
+import { HadithRowSchema, mapHadithRow, parseHadithId } from "@hadith/shared-types";
 
 import { checkRateLimit, clientKeyFromRequest } from "@/lib/server/rate-limit";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
@@ -9,10 +9,9 @@ import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Per-id cap matches the longest valid bukhari:N (URN can be ≤ 6 digits;
-// "bukhari:999999" = 14 chars). 32 is generous and bounds body size.
+// Per-id cap fits the longest "{collection}:{urn}" (e.g. "riyadussalihin:1500010").
 const RequestSchema = z.object({
-  ids: z.array(z.string().min(1).max(32)).max(500),
+  ids: z.array(z.string().min(1).max(40)).max(500),
 });
 
 export async function POST(req: Request) {
@@ -25,7 +24,7 @@ export async function POST(req: Request) {
   // 10 MB JSON first wastes CPU. content-length is advisory; the route is
   // still safe if missing.
   const contentLength = Number(req.headers.get("content-length") ?? 0);
-  if (contentLength > 32_000) {
+  if (contentLength > 40_000) {
     return NextResponse.json({ error: "request_too_large" }, { status: 413 });
   }
 
@@ -39,9 +38,12 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
   }
+  // arabicURN is the global PK across every collection, so the URN alone
+  // identifies a row — we don't need to filter by collection in the query.
   const urns = parsed.data.ids
-    .map(parseBukhariId)
-    .filter((n): n is number => typeof n === "number");
+    .map(parseHadithId)
+    .filter((p): p is { collection: string; urn: number } => p !== null)
+    .map((p) => p.urn);
   if (urns.length === 0) {
     return NextResponse.json({ hadiths: [] });
   }
@@ -50,9 +52,8 @@ export async function POST(req: Request) {
   const { data, error } = await supabase
     .from("hadith_table")
     .select(
-      '"arabicURN","bookNumber","hadithNumber","ourHadithNumber","englishBabName","arabicBabName","englishText","arabicText","englishgrade1","arabicgrade1"',
+      'collection,"arabicURN","bookNumber","hadithNumber","ourHadithNumber","englishBabName","arabicBabName","englishText","arabicText","englishgrade1","arabicgrade1"',
     )
-    .eq("collection", "bukhari")
     .in('"arabicURN"', urns);
   if (error) {
     console.error("/api/hadiths/by-bookmark-ids error:", error.message.slice(0, 200));
@@ -61,10 +62,10 @@ export async function POST(req: Request) {
 
   const rows = ((data ?? []) as Record<string, unknown>[])
     .map((r) =>
-      BukhariRpcRowSchema.safeParse({
+      HadithRowSchema.safeParse({
+        collection: r.collection,
         arabic_urn: r.arabicURN,
-        book_number:
-          typeof r.bookNumber === "string" ? Number.parseInt(r.bookNumber, 10) : r.bookNumber,
+        book_number_raw: r.bookNumber == null ? null : String(r.bookNumber),
         hadith_number_raw: r.hadithNumber,
         our_hadith_number: r.ourHadithNumber,
         english_bab_name: r.englishBabName,
@@ -76,11 +77,11 @@ export async function POST(req: Request) {
       }),
     )
     .filter(
-      (p): p is { success: true; data: ReturnType<typeof BukhariRpcRowSchema.parse> } => p.success,
+      (p): p is { success: true; data: ReturnType<typeof HadithRowSchema.parse> } => p.success,
     )
-    .map((p) => mapRowToHadith(p.data));
+    .map((p) => mapHadithRow(p.data));
 
-  // Sort to match the request order.
+  // Sort to match the request order (by URN).
   const byUrn = new Map(rows.map((h) => [h.urn, h]));
   const ordered = urns
     .map((u) => byUrn.get(u))

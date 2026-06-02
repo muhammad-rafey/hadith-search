@@ -5,7 +5,7 @@ import { ActivityIndicator, FlatList, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
-import type { Hadith } from "@hadith/shared-types";
+import { collectionName, type Hadith } from "@hadith/shared-types";
 import { EmptyState } from "@/components/empty-state";
 import { Icon } from "@/components/icon";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -70,60 +70,63 @@ export default function BookmarksScreen() {
             />
           )
         }
-        renderItem={({ item: h }) => (
-          <Swipeable
-            renderRightActions={() => (
-              <Pressable
-                onPress={() => remove(h.id)}
-                accessibilityRole="button"
-                accessibilityLabel={`Remove bookmark for hadith ${h.hadith_number}`}
-                className="my-0.5 ml-2 w-20 items-center justify-center rounded-md bg-destructive"
-              >
-                <Icon as={Trash2} size={18} token="destructive-foreground" />
-                <Text size="xs" className="mt-1 text-destructive-foreground">
-                  Remove
-                </Text>
-              </Pressable>
-            )}
-          >
-            <Pressable
-              haptic={false}
-              onPress={() => router.push(`/hadith/${encodeURIComponent(h.id)}?from=bookmark`)}
-              accessibilityRole="button"
-              accessibilityLabel={`Hadith ${h.hadith_number}`}
+        renderItem={({ item: h }) => {
+          const label = `${collectionName(h.collection)} ${h.hadith_number_label}`;
+          return (
+            <Swipeable
+              renderRightActions={() => (
+                <Pressable
+                  onPress={() => remove(h.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove bookmark for ${label}`}
+                  className="my-0.5 ml-2 w-20 items-center justify-center rounded-md bg-destructive"
+                >
+                  <Icon as={Trash2} size={18} token="destructive-foreground" />
+                  <Text size="xs" className="mt-1 text-destructive-foreground">
+                    Remove
+                  </Text>
+                </Pressable>
+              )}
             >
-              <Card>
-                <CardHeader className="pb-2">
-                  <Text size="xs" className="text-muted-foreground">
-                    {h.in_book_ref} · Bukhari {h.hadith_number}
-                  </Text>
-                  <Text size="base" weight="medium">
-                    {h.chapter_title_en ?? `Hadith ${h.hadith_number}`}
-                  </Text>
-                </CardHeader>
-                <CardContent className="flex-row items-start justify-between gap-3">
-                  <View className="flex-1">
-                    <Text size="sm" numberOfLines={2} className="text-muted-foreground">
-                      {h.text_en}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() => remove(h.id)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove bookmark for hadith ${h.hadith_number}`}
-                    hitSlop={8}
-                    className="flex-row items-center gap-1"
-                  >
-                    <Icon as={Trash2} size={16} token="muted-foreground" />
+              <Pressable
+                haptic={false}
+                onPress={() => router.push(`/hadith/${encodeURIComponent(h.id)}?from=bookmark`)}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+              >
+                <Card>
+                  <CardHeader className="pb-2">
                     <Text size="xs" className="text-muted-foreground">
-                      Remove
+                      {label}
                     </Text>
-                  </Pressable>
-                </CardContent>
-              </Card>
-            </Pressable>
-          </Swipeable>
-        )}
+                    <Text size="base" weight="medium">
+                      {h.chapter_title_en ?? `Hadith ${h.hadith_number_label}`}
+                    </Text>
+                  </CardHeader>
+                  <CardContent className="flex-row items-start justify-between gap-3">
+                    <View className="flex-1">
+                      <Text size="sm" numberOfLines={2} className="text-muted-foreground">
+                        {h.text_en}
+                      </Text>
+                    </View>
+                    <Pressable
+                      onPress={() => remove(h.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove bookmark for ${label}`}
+                      hitSlop={8}
+                      className="flex-row items-center gap-1"
+                    >
+                      <Icon as={Trash2} size={16} token="muted-foreground" />
+                      <Text size="xs" className="text-muted-foreground">
+                        Remove
+                      </Text>
+                    </Pressable>
+                  </CardContent>
+                </Card>
+              </Pressable>
+            </Swipeable>
+          );
+        }}
       />
     </View>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { SearchResult } from "@hadith/shared-types";
+import { collectionName, type SearchResult } from "@hadith/shared-types";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { FeedbackThumbs } from "@/components/feedback-thumbs";
 import { highlightTokens } from "@/lib/highlight";
@@ -18,6 +18,8 @@ interface HadithCardProps {
 
 export function HadithCard({ result, position, queryTokens, queryHash, onClick }: HadithCardProps) {
   const handleClick = () => onClick?.(result, position);
+  const collection = collectionName(result.collection);
+  const reference = `${collection} ${result.hadith_number_label}`;
 
   return (
     // The entire card is a navigable link via Next.js Link with asChild (Slot)
@@ -28,16 +30,14 @@ export function HadithCard({ result, position, queryTokens, queryHash, onClick }
       {/* Full-card link — sits behind other interactive elements via z-index */}
       <Link
         href={`/hadith/${result.id}`}
-        aria-label={`Read full hadith: Sahih al-Bukhari ${result.hadith_number}`}
+        aria-label={`Read full hadith: ${reference}`}
         className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
         tabIndex={-1}
         aria-hidden="true"
       />
       <CardHeader className="space-y-1 pb-2">
         <div className="flex flex-wrap items-baseline justify-between gap-2 text-xs text-[hsl(var(--muted-foreground))]">
-          <span className="font-semibold text-[hsl(var(--foreground))]">
-            Sahih al-Bukhari {result.hadith_number}
-          </span>
+          <span className="font-semibold text-[hsl(var(--foreground))]">{reference}</span>
           <span>
             {result.in_book_ref}
             {result.usc_msa_ref ? ` · ${result.usc_msa_ref}` : ""}

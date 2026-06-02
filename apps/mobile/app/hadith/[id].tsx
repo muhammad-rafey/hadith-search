@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as React from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
+import { collectionName, isKnownCollection } from "@hadith/shared-types";
 import { ArabicSection } from "@/components/arabic-section";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { EmptyState } from "@/components/empty-state";
@@ -66,23 +67,33 @@ export default function HadithDetailScreen() {
   }
 
   const grade = h.grades?.[0];
+  const collectionLabel = collectionName(h.collection);
+  const heading = `${collectionLabel} ${h.hadith_number_label}`;
+  // Sunnah.com expects the ref without spaces (a label may be "521, 522").
+  const sunnahRef = `${h.collection}:${h.hadith_number_label.replace(/\s+/g, "")}`;
 
   return (
     <View className="flex-1 bg-background">
-      <Stack.Screen options={{ title: `Bukhari ${h.hadith_number}` }} />
+      <Stack.Screen options={{ title: `${collectionLabel} ${h.hadith_number_label}` }} />
       <ScrollView contentContainerClassName="p-4 gap-6 pb-12">
         <View className="gap-2 border-b border-border pb-4">
-          <Pressable
-            haptic={false}
-            onPress={() => router.push(`/(tabs)/browse/${h.book_number}`)}
-            accessibilityRole="link"
-          >
+          {isKnownCollection(h.collection) ? (
+            <Pressable
+              haptic={false}
+              onPress={() => router.push(`/(tabs)/browse/${h.collection}`)}
+              accessibilityRole="link"
+            >
+              <Text size="xs" weight="medium" className="uppercase text-muted-foreground">
+                {collectionLabel}
+              </Text>
+            </Pressable>
+          ) : (
             <Text size="xs" weight="medium" className="uppercase text-muted-foreground">
-              {h.book_name_en}
+              {collectionLabel}
             </Text>
-          </Pressable>
+          )}
           <Text size="3xl" weight="semibold">
-            Sahih al-Bukhari {h.hadith_number}
+            {heading}
           </Text>
           {h.chapter_title_en ? (
             <Text size="lg" className="text-muted-foreground">
@@ -90,7 +101,7 @@ export default function HadithDetailScreen() {
             </Text>
           ) : null}
           <View className="flex-row flex-wrap gap-x-6 gap-y-2 pt-2">
-            <Meta label="Sunnah.com" value={`bukhari:${h.hadith_number}`} />
+            <Meta label="Sunnah.com" value={sunnahRef} />
             <Meta label="In-book" value={h.in_book_ref} />
             {h.usc_msa_ref ? <Meta label="USC-MSA" value={h.usc_msa_ref} /> : null}
             {grade ? <Meta label="Grade" value={`${grade.grade} (${grade.grader})`} /> : null}
@@ -114,7 +125,7 @@ export default function HadithDetailScreen() {
 
         <View className="flex-row flex-wrap gap-2 border-t border-border pt-4">
           <BookmarkButton hadithId={h.id} />
-          <ShareButton hadithId={h.id} title={`Sahih al-Bukhari ${h.hadith_number}`} />
+          <ShareButton hadithId={h.id} title={heading} />
         </View>
       </ScrollView>
     </View>

@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { HadithSchema, type Hadith } from "@hadith/shared-types";
+import { collectionName, HadithSchema, type Hadith } from "@hadith/shared-types";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -102,11 +102,11 @@ export default function BookmarksPage() {
               <Card>
                 <CardHeader className="pb-2">
                   <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                    {h.in_book_ref} · Bukhari {h.hadith_number}
+                    {collectionName(h.collection)} {h.hadith_number_label}
                   </p>
                   <CardTitle className="text-base font-medium">
                     <Link href={`/hadith/${h.id}`} className="hover:underline">
-                      {h.chapter_title_en ?? `Hadith ${h.hadith_number}`}
+                      {h.chapter_title_en ?? `Hadith ${h.hadith_number_label}`}
                     </Link>
                   </CardTitle>
                 </CardHeader>
@@ -119,7 +119,7 @@ export default function BookmarksPage() {
                     size="sm"
                     variant="ghost"
                     onClick={() => remove(h.id)}
-                    aria-label={`Remove bookmark for hadith ${h.hadith_number}`}
+                    aria-label={`Remove bookmark for ${collectionName(h.collection)} ${h.hadith_number_label}`}
                   >
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
                     Remove

@@ -21,6 +21,8 @@ export interface SearchBoxProps {
   loading?: boolean;
   autoFocus?: boolean;
   className?: string;
+  /** Override the placeholder. Defaults to the bukhari-scoped semantic copy. */
+  placeholder?: string;
 }
 
 export function SearchBox({
@@ -31,6 +33,7 @@ export function SearchBox({
   loading,
   autoFocus,
   className,
+  placeholder = "Search Sahih al-Bukhari...",
 }: SearchBoxProps) {
   const { theme } = useTheme();
   return (
@@ -49,7 +52,7 @@ export function SearchBox({
         returnKeyType="search"
         accessibilityLabel="Search hadiths"
         accessibilityState={{ busy: !!loading }}
-        placeholder="Search Sahih al-Bukhari..."
+        placeholder={placeholder}
         className="h-11 pl-10 pr-10 text-base"
       />
       <View className="absolute right-3 z-10">
