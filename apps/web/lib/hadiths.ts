@@ -235,11 +235,18 @@ export const getCollectionHadiths = cache(
 /** Resolve a hadith by its display number within a collection (jump-by-number). */
 export const getHadithByNumber = cache(
   async (collection: string, num: string): Promise<Hadith | null> => {
-    if (isPlaceholderSupabase())
+    if (isPlaceholderSupabase()) {
+      // Match the RPC's whitespace/case-insensitive comparison so offline jump
+      // -by-number behaves like prod ("8a" must find a stored "8 a").
+      const normalized = num.toLowerCase().replace(/\s+/g, "");
       return (
-        MOCK_HADITHS.find((h) => h.collection === collection && h.hadith_number_label === num) ??
-        null
+        MOCK_HADITHS.find(
+          (h) =>
+            h.collection === collection &&
+            h.hadith_number_label.toLowerCase().replace(/\s+/g, "") === normalized,
+        ) ?? null
       );
+    }
     try {
       const supabase = getSupabaseAdmin();
       const { data, error } = await supabase

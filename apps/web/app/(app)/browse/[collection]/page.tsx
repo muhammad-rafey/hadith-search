@@ -71,7 +71,14 @@ export default async function CollectionPage({ params }: Params) {
         <JumpToHadith collection={collection} />
       </div>
 
-      <CollectionHadithList collection={collection} initialHadiths={initialHadiths} />
+      {/* key by collection: the list seeds its paginated state from
+          initialHadiths on mount, so it must remount when the route param
+          changes or the next collection inherits the previous offset. */}
+      <CollectionHadithList
+        key={collection}
+        collection={collection}
+        initialHadiths={initialHadiths}
+      />
     </div>
   );
 }

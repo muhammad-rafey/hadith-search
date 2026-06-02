@@ -69,7 +69,9 @@ export default async function HadithDetailPage({ params }: Params) {
     author: h.narrator ? { "@type": "Person", name: h.narrator } : undefined,
     publisher: {
       "@type": "Organization",
-      name: "Sunnah.com (translation by Muhsin Khan)",
+      // Generic across collections — "Muhsin Khan" is only Bukhari's translator,
+      // so it can't be the attribution for Muslim/Nasai/… pages.
+      name: "Sunnah.com",
     },
   };
 

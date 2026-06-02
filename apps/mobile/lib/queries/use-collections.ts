@@ -31,18 +31,22 @@ export function useCollectionList() {
  * `hasNextPage` off and stops `onEndReached` from looping.
  */
 export function useCollectionHadiths(collection: string, pageSize = COLLECTION_PAGE_SIZE) {
+  // The RPC caps p_limit at 200; clamp here so the "short page = end" check and
+  // the offset math agree with what the server actually returns. Part of the
+  // query key so different page sizes don't collide in the cache.
+  const effectivePageSize = Math.min(pageSize, 200);
   return useInfiniteQuery<
     Hadith[],
     Error,
     InfiniteData<Hadith[], number>,
-    [string, string],
+    [string, string, number],
     number
   >({
-    queryKey: ["collection-hadiths", collection],
-    queryFn: ({ pageParam }) => getCollectionHadiths(collection, pageSize, pageParam),
+    queryKey: ["collection-hadiths", collection, effectivePageSize],
+    queryFn: ({ pageParam }) => getCollectionHadiths(collection, effectivePageSize, pageParam),
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) =>
-      lastPage.length < pageSize ? undefined : allPages.length * pageSize,
+      lastPage.length < effectivePageSize ? undefined : allPages.length * effectivePageSize,
     enabled: collection.length > 0,
     staleTime: DAY_MS,
   });
