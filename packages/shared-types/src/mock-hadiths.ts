@@ -9,7 +9,9 @@ import type { Book, Hadith } from "./index";
  * English translation: Dr. Muhsin Khan (Darussalam edition), public-domain
  * matn text. Arabic is the well-attested classical text.
  */
-export const MOCK_HADITHS: Hadith[] = [
+// `hadith_number_label` is derived (= String(hadith_number)) below so these
+// fixtures don't each have to repeat it.
+const MOCK_HADITHS_BASE: Omit<Hadith, "hadith_number_label">[] = [
   {
     id: "bukhari:1",
     collection: "bukhari",
@@ -236,6 +238,11 @@ export const MOCK_HADITHS: Hadith[] = [
     language: "en",
   },
 ];
+
+export const MOCK_HADITHS: Hadith[] = MOCK_HADITHS_BASE.map((h) => ({
+  ...h,
+  hadith_number_label: String(h.hadith_number),
+}));
 
 /**
  * The 10 sample books referenced by the mock hadiths above. Used for the

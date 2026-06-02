@@ -5,10 +5,12 @@ import { cache } from "react";
 import {
   BukhariRpcRowSchema,
   type Hadith,
+  HadithRowSchema,
   makeBukhariId,
+  mapHadithRow,
   mapRowToHadith,
   MOCK_HADITHS,
-  parseBukhariId,
+  parseHadithId,
 } from "@hadith/shared-types";
 
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
@@ -128,38 +130,130 @@ export const getHadithsForBook = cache(async (bookNumber: number): Promise<Hadit
 });
 
 export const getHadithById = cache(async (id: string): Promise<Hadith | null> => {
-  const value = parseBukhariId(id);
-  if (value === null) return null;
+  const parsed = parseHadithId(id);
+  if (!parsed) return null;
+  const { collection, urn } = parsed;
   if (isPlaceholderSupabase())
-    return MOCK_HADITHS.find((h) => h.urn === value || h.hadith_number === value) ?? null;
+    return (
+      MOCK_HADITHS.find((h) => h.id === id || h.urn === urn || h.hadith_number === urn) ?? null
+    );
   try {
     const supabase = getSupabaseAdmin();
     const tryRpc = async (
-      rpc: "get_bukhari_hadith_by_urn" | "get_bukhari_hadith_by_number",
-      args: Record<string, number>,
-    ) => {
+      rpc: "get_hadith_by_collection_urn" | "get_hadith_by_collection_number",
+      args: Record<string, string | number>,
+    ): Promise<Hadith | null> => {
       const { data, error } = await supabase
         .rpc(rpc, args)
         .abortSignal(AbortSignal.timeout(RPC_TIMEOUT_MS));
       if (error || !data) return null;
       const first = (data as unknown[])[0];
       if (!first) return null;
-      const parsed = BukhariRpcRowSchema.safeParse(first);
-      return parsed.success ? mapRowToHadith(parsed.data) : null;
+      const p = HadithRowSchema.safeParse(first);
+      return p.success ? mapHadithRow(p.data) : null;
     };
-    const first =
-      value >= 10000
-        ? await tryRpc("get_bukhari_hadith_by_urn", { p_urn: value })
-        : await tryRpc("get_bukhari_hadith_by_number", { p_n: value });
-    if (first) return first;
-    return value >= 10000
-      ? await tryRpc("get_bukhari_hadith_by_number", { p_n: value })
-      : await tryRpc("get_bukhari_hadith_by_urn", { p_urn: value });
+    // Real URNs are large (≥100k); a small value is a legacy
+    // "{collection}:{hadithNumber}" link, so fall back to a number lookup when
+    // the URN misses. URNs and hadith numbers don't overlap, so no ambiguity.
+    const byUrn = await tryRpc("get_hadith_by_collection_urn", {
+      p_collection: collection,
+      p_urn: urn,
+    });
+    if (byUrn) return byUrn;
+    return tryRpc("get_hadith_by_collection_number", {
+      p_collection: collection,
+      p_number: String(urn),
+    });
   } catch (err) {
     console.error("getHadithById failed:", err instanceof Error ? err.message : err);
     return null;
   }
 });
+
+export interface CollectionSummary {
+  collection: string;
+  hadith_count: number;
+}
+
+/** All 15 collections + counts, for the Browse landing. */
+export const getCollectionList = cache(async (): Promise<CollectionSummary[]> => {
+  if (isPlaceholderSupabase())
+    return [{ collection: "bukhari", hadith_count: MOCK_HADITHS.length }];
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .rpc("get_collection_list")
+      .abortSignal(AbortSignal.timeout(RPC_TIMEOUT_MS));
+    if (error) {
+      console.error("getCollectionList rpc error:", error.message.slice(0, 200));
+      return [];
+    }
+    return ((data ?? []) as { collection: string | null; hadith_count: number }[])
+      .filter(
+        (r): r is CollectionSummary => typeof r.collection === "string" && r.collection.length > 0,
+      )
+      .map((r) => ({ collection: r.collection, hadith_count: r.hadith_count }));
+  } catch (err) {
+    console.error("getCollectionList failed:", err instanceof Error ? err.message : err);
+    return [];
+  }
+});
+
+/** One page of a collection in canonical reading order. */
+export const getCollectionHadiths = cache(
+  async (collection: string, limit = 50, offset = 0): Promise<Hadith[]> => {
+    if (isPlaceholderSupabase())
+      return collection === "bukhari" ? MOCK_HADITHS.slice(offset, offset + limit) : [];
+    try {
+      const supabase = getSupabaseAdmin();
+      const { data, error } = await supabase
+        .rpc("get_collection_hadiths", {
+          p_collection: collection,
+          p_limit: limit,
+          p_offset: offset,
+        })
+        .abortSignal(AbortSignal.timeout(RPC_TIMEOUT_MS));
+      if (error) {
+        console.error("getCollectionHadiths rpc error:", error.message.slice(0, 200));
+        return [];
+      }
+      return ((data ?? []) as unknown[])
+        .map((r) => HadithRowSchema.safeParse(r))
+        .filter(
+          (p): p is { success: true; data: ReturnType<typeof HadithRowSchema.parse> } => p.success,
+        )
+        .map((p) => mapHadithRow(p.data));
+    } catch (err) {
+      console.error("getCollectionHadiths failed:", err instanceof Error ? err.message : err);
+      return [];
+    }
+  },
+);
+
+/** Resolve a hadith by its display number within a collection (jump-by-number). */
+export const getHadithByNumber = cache(
+  async (collection: string, num: string): Promise<Hadith | null> => {
+    if (isPlaceholderSupabase())
+      return (
+        MOCK_HADITHS.find((h) => h.collection === collection && h.hadith_number_label === num) ??
+        null
+      );
+    try {
+      const supabase = getSupabaseAdmin();
+      const { data, error } = await supabase
+        .rpc("get_hadith_by_collection_number", { p_collection: collection, p_number: num })
+        .abortSignal(AbortSignal.timeout(RPC_TIMEOUT_MS));
+      if (error || !data) return null;
+      const first = (data as unknown[])[0];
+      if (!first) return null;
+      const p = HadithRowSchema.safeParse(first);
+      return p.success ? mapHadithRow(p.data) : null;
+    } catch (err) {
+      console.error("getHadithByNumber failed:", err instanceof Error ? err.message : err);
+      return null;
+    }
+  },
+);
 
 /**
  * Used by the sitemap generator. Goes through `get_bukhari_hadith_ids` which
