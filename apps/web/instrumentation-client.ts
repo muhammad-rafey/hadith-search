@@ -16,7 +16,7 @@ Sentry.init({
       typeof url === "string" &&
       /\/api\/(search|feedback)(?:[/?]|$)/.test(url)
     ) {
-      if (breadcrumb.data) delete breadcrumb.data.body;
+      if (breadcrumb.data) breadcrumb.data.body = undefined;
     }
     return breadcrumb;
   },

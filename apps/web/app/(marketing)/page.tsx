@@ -10,14 +10,14 @@ export default function LandingPage() {
       <section className="border-b border-[hsl(var(--border))] py-20">
         <div className="container mx-auto max-w-4xl px-4 text-center">
           <p className="mb-3 text-sm font-medium uppercase tracking-wider text-[hsl(var(--primary))]">
-            Sahih al-Bukhari
+            Hadith collections
           </p>
           <h1 className="text-balance text-4xl font-bold tracking-tight sm:text-5xl">
             Find the hadith you mean, not just the words.
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-[hsl(var(--muted-foreground))]">
-            Semantic search over the full corpus, with Arabic, English translation, and full
-            references for every result.
+            AI semantic search over Sahih al-Bukhari, plus browsing and number lookup across fifteen
+            collections — with Arabic, English translation, and full references for every result.
           </p>
           <form
             action="/search"
@@ -56,20 +56,20 @@ export default function LandingPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                  Hybrid BM25 plus vector retrieval with cross-encoder reranking. Find the meaning,
-                  not just the keyword.
+                  Hybrid BM25 plus vector retrieval with cross-encoder reranking over Sahih
+                  al-Bukhari. Find the meaning, not just the keyword.
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
                 <BookOpen className="h-6 w-6 text-[hsl(var(--primary))]" aria-hidden="true" />
-                <CardTitle>Browse by book</CardTitle>
+                <CardTitle>Browse every collection</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                  Every book of Sahih al-Bukhari, organized so you can read straight through or jump
-                  to any reference.
+                  Fifteen collections — Bukhari, Muslim, the Sunan and more — to read straight
+                  through or jump to any hadith by number.
                 </p>
               </CardContent>
             </Card>

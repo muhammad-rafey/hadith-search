@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { collectionName } from "@hadith/shared-types";
 import { getHadithById } from "@/lib/hadiths";
 import { getSiteUrl } from "@/lib/site";
 
@@ -11,6 +12,7 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
   // Next.js already decodes route params.
   const h = await getHadithById(id);
   const siteHost = getSiteUrl().replace(/^https?:\/\//, "");
+  const collection = h ? collectionName(h.collection) : null;
 
   return new ImageResponse(
     <div
@@ -27,11 +29,11 @@ export default async function OgImage({ params }: { params: Promise<{ id: string
       }}
     >
       <div style={{ display: "flex", fontSize: 28, opacity: 0.85 }}>
-        Hadith Search · Sahih al-Bukhari
+        Hadith Search{collection ? ` · ${collection}` : ""}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ fontSize: 60, fontWeight: 700, lineHeight: 1.1 }}>
-          {h ? `Bukhari ${h.hadith_number}` : "Hadith"}
+          {h && collection ? `${collection} ${h.hadith_number_label}` : "Hadith"}
         </div>
         {h?.chapter_title_en ? (
           <div style={{ fontSize: 32, opacity: 0.92 }}>{h.chapter_title_en}</div>
