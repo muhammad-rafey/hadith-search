@@ -2,6 +2,10 @@
 node_modules/
 .pnpm-store/
 
+# Local BGE-M3 embedding server venv (scripts/bge_m3_server.py)
+scripts/bge-m3-venv/
+bge-m3-venv/
+
 # Build output
 dist/
 build/

@@ -20,8 +20,7 @@ const DATABASE_URL = process.env.DATABASE_URL;
 
 if (!DATABASE_URL) {
   console.error(
-    "DATABASE_URL is not set.\n" +
-      "Run with: node --env-file=.env scripts/load_chunks.mjs",
+    "DATABASE_URL is not set.\n" + "Run with: node --env-file=.env scripts/load_chunks.mjs",
   );
   process.exit(1);
 }

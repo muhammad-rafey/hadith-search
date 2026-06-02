@@ -2,17 +2,26 @@
 
 This directory holds the Supabase project that powers hadith-search:
 
-- `config.toml` — local stack config (Postgres, Studio, Edge Runtime ports).
-- `migrations/` — SQL migrations (schema + RPC).
-- `seed.sql` — local-dev seed (10 mock hadiths + stub embeddings).
-- `functions/search/` — hybrid-search Edge Function (Deno).
-- `functions/feedback/` — thumbs up/down Edge Function (Deno).
-- `functions/_shared/` — shared CORS + helpers.
+- `config.toml` — local stack config (Postgres, Studio ports).
+- `migrations/` — SQL migrations (schema + RPC). The set is `0003_*`–`0015_*`;
+  the original placeholder `0001_init.sql` / `0002_search_rpc.sql` were removed
+  (never applied to production, and they broke `supabase db reset`).
+- `seed.sql` — local-dev seed (10 mock Bukhari rows + stub embeddings).
 
-The schema and seed are **placeholders** until the user-provided data dump
-arrives. They match the `Hadith` Zod contract in
-`packages/shared-types/src/index.ts` so the web app can develop against
-realistic shapes.
+The schema and seed are **real**. `0003_hadith_table_raw.sql` defines the
+denormalized `hadith_table` — a 1:1 mirror of the sunnah-db dump — and the FTS
+leg is bilingual (English `'english'` config + Arabic `'simple'` config; see
+0013/0014). `seed.sql` loads 10 mock Bukhari rows into that real table (plus
+stub embeddings in `hadith_embeddings`, keyed by `arabicURN`) for the local dev
+loop. The full ~45k-row corpus is loaded into production out-of-band via
+`scripts/load_chunks.mjs` + the embedding ingest — not by `seed.sql`. The rows
+match the `Hadith` Zod contract in `packages/shared-types/src/index.ts`.
+
+> **The Supabase Deno Edge Functions have been retired and removed**
+> (`supabase/functions/` no longer exists). The live API is now the Next.js
+> backend-for-frontend at `apps/web/app/api/*`; both the web UI and the mobile
+> app call those routes. Any reference below to `functions/v1/*` or
+> `supabase functions serve` is obsolete.
 
 ---
 
@@ -36,13 +45,10 @@ realistic shapes.
 2. **Docker** — required by `supabase start`. Docker Desktop or
    Docker Engine works.
 
-3. **Deno** is *not* required locally — `supabase functions serve` ships its
-   own Deno runtime inside the Edge Runtime container.
-
-4. Copy `.env.example` (in the repo root) to `.env.local` and fill in any
+3. Copy `.env.example` (in the repo root) to `.env.local` and fill in any
    real keys you have. Cohere is **optional** for local dev — when
-   `COHERE_API_KEY` is empty the search function falls back to a deterministic
-   stub embedding so the pipeline still runs end-to-end (response is marked
+   `COHERE_API_KEY` is empty the search pipeline falls back to a deterministic
+   stub embedding so it still runs end-to-end (response is marked
    `degraded: true`).
 
 ---
@@ -58,9 +64,9 @@ All commands run from the repo root (the directory that contains this
 supabase start
 ```
 
-This brings up Postgres (54322), PostgREST (54321), Studio (54323), Inbucket
-mail (54324), and the Edge Runtime. First run pulls Docker images
-(~few minutes); subsequent runs are seconds.
+This brings up Postgres (54322), PostgREST (54321), Studio (54323), and
+Inbucket mail (54324). First run pulls Docker images (~few minutes);
+subsequent runs are seconds.
 
 ### Reset the database (re-run all migrations + seed)
 
@@ -68,81 +74,39 @@ mail (54324), and the Edge Runtime. First run pulls Docker images
 supabase db reset
 ```
 
-This drops the local Postgres volume, replays
-`migrations/0001_init.sql` and `0002_search_rpc.sql`, then loads
-`seed.sql`. Use it whenever you change a migration or the seed.
-
-### Serve the search Edge Function
-
-```sh
-supabase functions serve search --env-file .env.local
-```
-
-The function is then reachable at:
-
-```
-http://127.0.0.1:54321/functions/v1/search
-```
-
-### Serve both Edge Functions at once
-
-```sh
-supabase functions serve --env-file .env.local
-```
+This drops the local Postgres volume, replays **all migrations** in lexical
+order (`0003_*` through `0015_*`), then loads `seed.sql`. Use it whenever you
+change a migration or the seed.
 
 ---
 
-## Smoke-test with curl
+## Smoke-test the search API
 
-You'll need a JWT (the local anon key from `supabase status` works).
+The live search/feedback API is the Next.js backend-for-frontend in
+`apps/web/app/api/*` (run it with `pnpm dev` → <http://localhost:3000>), not a
+Supabase Edge Function. The real pipeline is `runSearch()` in
+`apps/web/lib/server/search-pipeline.ts`. Examples:
 
 ```sh
-ANON_KEY=$(supabase status --output json | jq -r '.anon_key')
-
 # Reference shortcut — should return mode: "reference" with bukhari:1.
-curl -s -X POST http://127.0.0.1:54321/functions/v1/search \
-  -H "Authorization: Bearer $ANON_KEY" \
+curl -s -X POST http://localhost:3000/api/search \
   -H "Content-Type: application/json" \
   -d '{"query":"bukhari:1"}' | jq
 
 # Free-text search (uses stub embedding when COHERE_API_KEY is unset).
-curl -s -X POST http://127.0.0.1:54321/functions/v1/search \
-  -H "Authorization: Bearer $ANON_KEY" \
+curl -s -X POST http://localhost:3000/api/search \
   -H "Content-Type: application/json" \
   -d '{"query":"intention","topK":5}' | jq
 
-# USC-MSA reference.
-curl -s -X POST http://127.0.0.1:54321/functions/v1/search \
-  -H "Authorization: Bearer $ANON_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"query":"Vol. 1, Book 1, Hadith 1"}' | jq
-
 # Same query twice — second call should return mode: "cache".
-curl -s -X POST http://127.0.0.1:54321/functions/v1/search \
-  -H "Authorization: Bearer $ANON_KEY" \
+curl -s -X POST http://localhost:3000/api/search \
   -H "Content-Type: application/json" \
   -d '{"query":"abu hurairah"}' | jq
-```
-
-### Feedback endpoint
-
-```sh
-QUERY_HASH=$(printf 'en||%sintention' "" | shasum -a 256 | awk '{print $1}')
-
-curl -i -X POST http://127.0.0.1:54321/functions/v1/feedback \
-  -H "Authorization: Bearer $ANON_KEY" \
-  -H "Content-Type: application/json" \
-  -d "{\"query_hash\":\"$QUERY_HASH\",\"hadith_id\":\"bukhari:1\",\"position\":0,\"thumb\":\"up\"}"
-# expect: HTTP/1.1 204 No Content
 ```
 
 ---
 
 ## What's NOT included yet
 
-- Real corpus and embeddings (waiting on data dump).
-- Arabic / Urdu seed rows (English only for v1).
-- `00-data-schema.md` and `00-data-ingestion.md` plan files (added post-dump).
-- Sentry SDK wiring inside the Edge Functions (tracked in
-  `plan/03-analytics-monitoring.md`; currently `console.error` only).
-- Rate limiting beyond Supabase's default per-JWT limit.
+- `00-data-schema.md` and `00-data-ingestion.md` plan files.
+- Rate limiting beyond the pipeline's in-memory per-client token bucket.

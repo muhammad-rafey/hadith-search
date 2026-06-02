@@ -1,7 +1,8 @@
 # Supabase project configuration for hadith-search.
 # Reference: https://supabase.com/docs/guides/cli/config
 # Run `supabase start` from the repo root (which contains this `supabase/` dir)
-# to spin up Postgres + Studio + the Edge Function runtime locally.
+# to spin up Postgres + Studio locally. (Edge Functions were retired — the live
+# backend is the Next.js BFF at apps/web/app/api/*.)
 
 project_id = "hadith-search"
 
@@ -9,9 +10,9 @@ project_id = "hadith-search"
 enabled = true
 # REST/GraphQL/Realtime endpoint port for the local stack.
 port = 54321
-# Schemas exposed via PostgREST. `public` is what the Edge Function and the web
-# client both hit; `storage` and `graphql_public` are Supabase defaults we keep
-# enabled in case we add file uploads or GraphQL later.
+# Schemas exposed via PostgREST. `public` is what the Next.js BFF hits (via the
+# service-role client); `storage` and `graphql_public` are Supabase defaults we
+# keep enabled in case we add file uploads or GraphQL later.
 schemas = ["public", "storage", "graphql_public"]
 extra_search_path = ["public", "extensions"]
 # Cap on rows returned by a single PostgREST request. 1000 is the Supabase
@@ -69,28 +70,9 @@ enable_signup = true
 double_confirm_changes = true
 enable_confirmations = false
 
-[edge_runtime]
-enabled = true
-# `oneshot` is the recommended policy for local dev — restarts the worker on
-# every request, which keeps changes hot. Use `per_worker` for prod-like load
-# testing.
-policy = "oneshot"
-inspector_port = 8083
-
-# ---------------------------------------------------------------------------
-# Edge Functions
-# ---------------------------------------------------------------------------
-# `verify_jwt = true` means PostgREST-style auth — the function requires a
-# Supabase JWT (anonymous JWTs work, since anonymous sign-ins are enabled).
-# This is what gives us per-user rate limiting via Supabase's built-in limiter.
-
-[functions.search]
-verify_jwt = true
-import_map = "./functions/search/deno.json"
-
-[functions.feedback]
-verify_jwt = true
-import_map = "./functions/feedback/deno.json"
+# Edge Functions were retired — the live backend is the Next.js BFF
+# (apps/web/app/api/*). The [edge_runtime] / [functions.*] blocks were removed
+# along with supabase/functions/.
 
 [analytics]
 enabled = false

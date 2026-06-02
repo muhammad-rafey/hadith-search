@@ -4,10 +4,11 @@ Expo / React Native companion to the web app. Full feature parity: semantic
 search, browse by book, hadith detail (Arabic + English + references),
 bookmarks, settings (theme / font size / Arabic / private mode).
 
-It reuses the same backend as the web app — the `@hadith/shared-types`
-contract and the Supabase `search` Edge Function — so nothing server-side
-changes. With no env configured it runs entirely against the bundled sample
-corpus (`MOCK_HADITHS`), exactly like the web app's placeholder mode.
+It talks to the web app's Next.js BFF — every request goes to
+`${EXPO_PUBLIC_API_URL}/api/*` (the `apps/web` routes), sharing the
+`@hadith/shared-types` contract, so nothing server-side changes. Search hits
+the web app's Next.js `/api/search` route (apps/web). The mobile app always
+needs a reachable `EXPO_PUBLIC_API_URL`; it has no offline mode of its own.
 
 ## Quick start
 
@@ -22,10 +23,11 @@ with the **Expo Go** app on a physical device.
 
 ## Configuration
 
-All optional. Create `apps/mobile/.env` (see the `EXPO_PUBLIC_*` block in the
-repo-root `.env.example`):
+Create `apps/mobile/.env` (see the `EXPO_PUBLIC_*` block in the repo-root
+`.env.example`):
 
 ```bash
+EXPO_PUBLIC_API_URL=http://localhost:3000
 EXPO_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 EXPO_PUBLIC_POSTHOG_KEY=<optional>
@@ -34,8 +36,14 @@ EXPO_PUBLIC_SENTRY_DSN=<optional>
 EXPO_PUBLIC_SHARE_BASE_URL=https://yourdomain.com/hadith/
 ```
 
-- **No Supabase vars** → mock mode (works offline, full UI).
-- **Supabase set** → search hits the live Edge Function. No code change.
+- **`EXPO_PUBLIC_API_URL`** (required) → points the app at the web BFF;
+  defaults to `http://localhost:3000`. On a physical device this must be your
+  machine's LAN IP (not `localhost`), and the `apps/web` server must be running.
+- **Supabase vars** (optional) → only used to forward an anon JWT as `Bearer`
+  on each request. Without them, `apiFetch` simply skips the JWT and still
+  fetches from `EXPO_PUBLIC_API_URL`. They do not select the backend.
+- **`EXPO_PUBLIC_SHARE_BASE_URL`** → set this for any non-dev build, or share
+  links leak the placeholder host.
 - **PostHog / Sentry unset** → analytics / error tracking no-op silently.
   Full Sentry native crash reporting needs a dev/EAS build (not Expo Go).
 

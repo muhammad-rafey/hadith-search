@@ -8,10 +8,11 @@ create index if not exists hadith_table_bukhari_fts_idx
   using gin (to_tsvector('english', coalesce("englishText", '')))
   where collection = 'bukhari';
 
-create index if not exists hadith_table_bukhari_trgm_idx
-  on public.hadith_table
-  using gin (lower(coalesce("englishText", '')) gin_trgm_ops)
-  where collection = 'bukhari';
+-- NOTE: an earlier trigram index (hadith_table_bukhari_trgm_idx) on
+-- lower("englishText") was dropped — the planner never used it (the narrator
+-- filter is a small post-fusion predicate, and hybrid search relies on the FTS
+-- GIN above + the HNSW vector index). Re-add a trgm index only if a future
+-- substring-search feature actually needs it.
 
 create index if not exists hadith_table_bukhari_bookno_int_idx
   on public.hadith_table ((nullif("bookNumber", '')::int))

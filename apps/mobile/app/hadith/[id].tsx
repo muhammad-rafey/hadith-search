@@ -21,7 +21,7 @@ export default function HadithDetailScreen() {
   const params = useLocalSearchParams<{ id: string | string[]; from?: string }>();
   // expo-router can return an array; take the first segment. The param is
   // already decoded by expo-router so no decodeURIComponent here.
-  const id = Array.isArray(params.id) ? params.id[0] ?? "" : params.id ?? "";
+  const id = Array.isArray(params.id) ? (params.id[0] ?? "") : (params.id ?? "");
 
   const query = useQuery({
     queryKey: ["hadith", id],

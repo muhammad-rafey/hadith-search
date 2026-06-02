@@ -23,8 +23,8 @@ export async function GET() {
   };
   try {
     const supabase = getSupabaseAdmin();
-    // Cheap reachability probe — auth schema is always present and avoids
-    // pulling the full book aggregation.
+    // Cheap reachability probe — a HEAD/count on query_cache validates the
+    // service-role (or anon) connection without pulling the full book aggregation.
     const { error } = await supabase
       .from("query_cache")
       .select("query_hash", { head: true, count: "exact" })

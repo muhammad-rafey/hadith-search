@@ -25,12 +25,7 @@ export type Reference =
 
 const MAX_REFERENCE_VALUE = 999_999; // Bukhari URNs are ≤ ~120k; this is comfortably above.
 
-const BUKHARI_NAMES = [
-  "bukhari",
-  "sahih al-bukhari",
-  "sahih bukhari",
-  "al-bukhari",
-];
+const BUKHARI_NAMES = ["bukhari", "sahih al-bukhari", "sahih bukhari", "al-bukhari"];
 
 function bounded(n: number): number | null {
   if (!Number.isFinite(n) || n < 1 || n > MAX_REFERENCE_VALUE) return null;

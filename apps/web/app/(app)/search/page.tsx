@@ -182,18 +182,13 @@ function SearchPageInner() {
           Filters
         </legend>
         <div className="flex flex-wrap items-center gap-2">
-          <label
-            htmlFor="book-filter"
-            className="text-xs text-[hsl(var(--muted-foreground))]"
-          >
+          <label htmlFor="book-filter" className="text-xs text-[hsl(var(--muted-foreground))]">
             Book:
           </label>
           <select
             id="book-filter"
             value={bookFilter ?? ""}
-            onChange={(e) =>
-              setBookFilter(e.target.value === "" ? null : Number(e.target.value))
-            }
+            onChange={(e) => setBookFilter(e.target.value === "" ? null : Number(e.target.value))}
             className="h-9 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2 text-sm"
           >
             <option value="">All books</option>

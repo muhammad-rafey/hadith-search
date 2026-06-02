@@ -19,7 +19,7 @@ interface FeedbackThumbsProps {
  * Thumbs-up / thumbs-down feedback for a search result.
  *
  * - Fires the `search_feedback_given` PostHog event.
- * - POSTs to the `feedback` Supabase Edge Function.
+ * - POSTs to the Next.js BFF route /api/feedback.
  * - Renders nothing when `queryHash` is empty (privacy guard).
  * - Once a thumb is pressed, marks as submitted and shows "Thanks!".
  */

@@ -2,11 +2,15 @@
   "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "files": {
     "ignore": [
-      "node_modules",
-      ".next",
-      "dist",
-      "build",
-      ".turbo",
+      "**/node_modules",
+      "**/.next",
+      "**/.expo",
+      "**/dist",
+      "**/build",
+      "**/.turbo",
+      "**/*.tsbuildinfo",
+      "scripts/bge-m3-venv",
+      "supabase/seed/hadith_table",
       "supabase/.branches",
       "supabase/.temp",
       "**/*.md"

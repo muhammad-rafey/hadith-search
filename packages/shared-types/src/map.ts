@@ -1,7 +1,6 @@
 import { z } from "zod";
 import {
   cleanArabicText,
-  cleanEnglishText,
   extractNarratorFromEnglish,
   normalizeNarrator,
   stripNarratorPrefix,
@@ -84,9 +83,7 @@ export function mapRowToSearchResult(row: BukhariRpcRow): SearchResult {
     narrator,
     text_en_full: stripNarratorPrefix(row.english_text),
     text_ar: cleanedAr || null,
-    ...(typeof row.score === "number"
-      ? { relevance: Math.max(0, Math.min(1, row.score)) }
-      : {}),
+    ...(typeof row.score === "number" ? { relevance: Math.max(0, Math.min(1, row.score)) } : {}),
   };
 }
 
@@ -100,7 +97,10 @@ export function mapRowToHadith(row: BukhariRpcRow): Hadith {
   const seq = row.our_hadith_number ?? 0;
   const globalN = parsePrimaryHadithNumber(row.hadith_number_raw) ?? seq;
   const cleanedAr = cleanArabicText(row.arabic_text);
-  const cleanedEn = cleanEnglishText(row.english_text);
+  // Body-only English (narrator prefix removed). Every consumer renders the
+  // narrator on its own line, so keeping the "Narrated X:" prefix in the text
+  // fields would print the narrator twice. Mirrors mapRowToSearchResult.
+  const bodyEn = stripNarratorPrefix(row.english_text);
   const narrator = extractNarratorFromEnglish(row.english_text);
   const grades: { grader: string; grade: string }[] = [];
   if (row.english_grade) {
@@ -119,8 +119,8 @@ export function mapRowToHadith(row: BukhariRpcRow): Hadith {
     usc_msa_ref: null,
     narrator,
     narrator_normalized: narrator ? normalizeNarrator(narrator) : null,
-    text_en: cleanedEn,
-    text_en_full: cleanedEn,
+    text_en: bodyEn,
+    text_en_full: bodyEn,
     text_ar: cleanedAr || null,
     grades: grades.length > 0 ? grades : null,
     urn: row.arabic_urn,

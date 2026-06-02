@@ -68,8 +68,8 @@ export default function LandingPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                  All 97 books of Sahih al-Bukhari, organized so you can read straight through or
-                  jump to any reference.
+                  Every book of Sahih al-Bukhari, organized so you can read straight through or jump
+                  to any reference.
                 </p>
               </CardContent>
             </Card>

@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  SearchRequestSchema,
-  SearchResponseSchema,
-} from "@hadith/shared-types";
+import { SearchRequestSchema, SearchResponseSchema } from "@hadith/shared-types";
 
 import { userIdFromRequest } from "@/lib/server/auth";
 import { checkRateLimit, clientKeyFromRequest } from "@/lib/server/rate-limit";
@@ -11,6 +8,13 @@ import { runSearch } from "@/lib/server/search-pipeline";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Must exceed the worst-case embed + rerank timeout budget so the in-process
+// AbortSignal (and the degraded fallback) fires before the platform kills the
+// function. The default Cohere budget is small (EMBED_TIMEOUT_MS 1.5s +
+// RERANK_TIMEOUT_MS 2s ≈ 3.5s). EMBED_PROVIDER=bge-local has a much larger
+// budget (BGE_QUERY_TIMEOUT_MS 8s + BGE_RERANK_TIMEOUT_MS 20s) and is intended
+// for LOCAL dev (where maxDuration is ignored) — raise this if you ever deploy
+// the bge-local path.
 export const maxDuration = 15;
 
 export async function POST(req: Request) {

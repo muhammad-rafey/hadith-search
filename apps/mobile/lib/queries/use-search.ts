@@ -6,6 +6,7 @@ import {
 } from "@hadith/shared-types";
 
 import { apiFetch } from "@/lib/api";
+import { useUiStore } from "@/lib/store/ui-store";
 
 /**
  * Canonical key — mirrors apps/web/lib/queries/use-search.ts and the server
@@ -35,17 +36,21 @@ export function canonicalKey({
 
 /**
  * Search mutation. POSTs to the Next.js API at `${ENV.API_URL}/api/search`
- * which runs the full hybrid pipeline (Cohere embed + RRF + rerank +
- * cache + log). Uses the shared apiFetch so Authorization JWT forwarding
- * stays in one place.
+ * which runs the full hybrid pipeline (embed + RRF + rerank + cache + log).
+ * Uses the shared apiFetch so Authorization JWT forwarding stays in one place.
+ *
+ * Forwards `skip_cache` from the persisted Private-mode toggle (ui-store) so
+ * the server skips both the cache read and write — mirrors the web client.
  */
 export function useSearch() {
   return useMutation<SearchResponse, Error, SearchRequest>({
     mutationKey: ["search"],
     mutationFn: async (vars) => {
+      const { privateMode } = useUiStore.getState();
+      const body: SearchRequest = { ...vars, skip_cache: privateMode };
       const res = await apiFetch("/api/search", {
         method: "POST",
-        body: JSON.stringify(vars),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         let detail = "";

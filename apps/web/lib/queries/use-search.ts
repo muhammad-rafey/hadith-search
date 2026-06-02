@@ -51,7 +51,7 @@ export function useSearch() {
   return useMutation<SearchResponse, Error, SearchRequest>({
     mutationKey: ["search"],
     mutationFn: async (vars) => {
-      const privateMode = useUiStore.getState().privateMode;
+      const { privateMode } = useUiStore.getState();
       const body: SearchRequest = { ...vars, skip_cache: privateMode };
       const res = await apiFetch("/api/search", {
         method: "POST",

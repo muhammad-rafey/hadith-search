@@ -7,10 +7,7 @@ import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  req: Request,
-  ctx: { params: Promise<{ book: string }> },
-) {
+export async function GET(req: Request, ctx: { params: Promise<{ book: string }> }) {
   const { book } = await ctx.params;
   // Reject "12abc" or other near-numeric strings up front.
   if (!/^\d+$/.test(book)) {
@@ -37,7 +34,9 @@ export async function GET(
   }
   const rows = ((data ?? []) as unknown[])
     .map((r) => BukhariRpcRowSchema.safeParse(r))
-    .filter((p): p is { success: true; data: ReturnType<typeof BukhariRpcRowSchema.parse> } => p.success)
+    .filter(
+      (p): p is { success: true; data: ReturnType<typeof BukhariRpcRowSchema.parse> } => p.success,
+    )
     .map((p) => mapRowToHadith(p.data));
 
   return NextResponse.json(

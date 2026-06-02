@@ -6,14 +6,15 @@ Sentry.init({
   tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
   enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
   beforeBreadcrumb(breadcrumb) {
-    // Match only the actual Supabase Edge Function path, not any URL that happens
-    // to contain "/search" (e.g., a future /settings/search page).
-    // PRESERVED CodeRabbit fix — do not loosen to .includes('/search').
+    // Scrub the request body from fetch breadcrumbs to the search/feedback BFF
+    // routes — the body carries the raw query, which must never reach Sentry.
+    // Match the exact API paths, not any URL containing "/search" (e.g. a future
+    // /settings/search page). Do NOT loosen to .includes('/search').
     const url = breadcrumb.data?.url;
     if (
       breadcrumb.category === "fetch" &&
       typeof url === "string" &&
-      /\/functions\/v1\/search(?:[/?]|$)/.test(url)
+      /\/api\/(search|feedback)(?:[/?]|$)/.test(url)
     ) {
       if (breadcrumb.data) delete breadcrumb.data.body;
     }

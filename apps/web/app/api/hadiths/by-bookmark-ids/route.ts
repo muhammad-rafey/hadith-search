@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-  BukhariRpcRowSchema,
-  mapRowToHadith,
-  parseBukhariId,
-} from "@hadith/shared-types";
+import { BukhariRpcRowSchema, mapRowToHadith, parseBukhariId } from "@hadith/shared-types";
 
 import { checkRateLimit, clientKeyFromRequest } from "@/lib/server/rate-limit";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
@@ -67,7 +63,8 @@ export async function POST(req: Request) {
     .map((r) =>
       BukhariRpcRowSchema.safeParse({
         arabic_urn: r.arabicURN,
-        book_number: typeof r.bookNumber === "string" ? Number.parseInt(r.bookNumber, 10) : r.bookNumber,
+        book_number:
+          typeof r.bookNumber === "string" ? Number.parseInt(r.bookNumber, 10) : r.bookNumber,
         hadith_number_raw: r.hadithNumber,
         our_hadith_number: r.ourHadithNumber,
         english_bab_name: r.englishBabName,
@@ -78,12 +75,16 @@ export async function POST(req: Request) {
         arabic_grade: r.arabicgrade1,
       }),
     )
-    .filter((p): p is { success: true; data: ReturnType<typeof BukhariRpcRowSchema.parse> } => p.success)
+    .filter(
+      (p): p is { success: true; data: ReturnType<typeof BukhariRpcRowSchema.parse> } => p.success,
+    )
     .map((p) => mapRowToHadith(p.data));
 
   // Sort to match the request order.
   const byUrn = new Map(rows.map((h) => [h.urn, h]));
-  const ordered = urns.map((u) => byUrn.get(u)).filter((h): h is NonNullable<typeof h> => Boolean(h));
+  const ordered = urns
+    .map((u) => byUrn.get(u))
+    .filter((h): h is NonNullable<typeof h> => Boolean(h));
 
   return NextResponse.json({ hadiths: ordered });
 }

@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * Search request/response schemas shared between the web app and the
- * Supabase Edge Function. The schema is the contract between the two.
+ * Search request/response schemas — the API contract shared between the
+ * Next.js BFF (apps/web/app/api/*) and both clients (web UI + Expo mobile).
  */
 
 export const LanguageSchema = z.enum(["en", "ar", "ur"]);
@@ -46,8 +46,10 @@ export const SearchResponseSchema = z.object({
 export type SearchResponse = z.infer<typeof SearchResponseSchema>;
 
 /**
- * Hadith record as stored in the `hadiths` table. Schema is placeholder
- * pending the user-provided data dump (see plan/05-roadmap.md Phase 1).
+ * Richer hadith record used by the detail / browse pages. Produced by
+ * mapRowToHadith from a `hadith_table` RPC row (see map.ts). `text_en` and
+ * `text_en_full` are both narrator-prefix-stripped; the narrator is carried
+ * separately and rendered on its own line by every consumer.
  */
 export const HadithSchema = z.object({
   id: z.string(),

@@ -11,9 +11,12 @@ import { useUiStore } from "@/lib/store";
  * plan/03-analytics-monitoring.md "Privacy posture": raw query text MUST NEVER
  * be logged to PostHog, Sentry, or any third party.
  *
- * Canonical key format hashed here (must match Edge Function):
+ * Canonical key format hashed here MUST match the server contract in
+ * apps/web/lib/server/hash.ts (canonicalKey/normalizeQuery) and the mobile
+ * mirror, or cache keys + analytics populations diverge across surfaces:
  *   `language + "|" + (book ?? "") + "|" + (narrator ?? "") + "|" + canonical_query`
- * where canonical_query is lowercased and whitespace-collapsed.
+ * where canonical_query is NFKC-normalized, lowercased, whitespace-collapsed,
+ * and stripped of trailing whitespace/punctuation.
  *
  * Throws Error("sha256: crypto.subtle unavailable") when the Web Crypto API is
  * not accessible (e.g., non-secure context, or SSR). Callers should catch and

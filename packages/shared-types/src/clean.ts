@@ -7,8 +7,9 @@
  *     [narrator id="N" role="…" tooltip="…"]NAME[/narrator] tags.
  *   - englishText carries unpaired <p> tags, leading "Narrated X:" prefixes
  *     (sometimes with backtick or apostrophe before the name), a lot of
- *     decorative whitespace, and HTML entities like &amp;#39; / &amp;quot; /
- *     &amp;nbsp; that need to be decoded for legible display.
+ *     decorative whitespace, and single-escaped HTML entities — mostly &nbsp;
+ *     plus numeric forms such as &#146; (a Windows-1252 right single quote that
+ *     must be remapped, not dropped) — that need decoding for legible display.
  */
 
 // ── Arabic ──────────────────────────────────────────────────────────────────
@@ -45,9 +46,10 @@ export function cleanArabicText(raw: string | null | undefined): string {
  * Prophet's words) sections when the markers are present. Falls back to a
  * single matn-only string when the markers are absent.
  */
-export function splitArabicSnad(
-  raw: string | null | undefined,
-): { isnad: string | null; matn: string } {
+export function splitArabicSnad(raw: string | null | undefined): {
+  isnad: string | null;
+  matn: string;
+} {
   if (!raw) return { isnad: null, matn: "" };
   const matnMatch = raw.match(/\[matn\]([\s\S]*?)\[\/matn\]/);
   const prematnMatch = raw.match(/\[prematn\]([\s\S]*?)\[\/prematn\]/);
@@ -99,11 +101,32 @@ function decodeEntities(s: string): string {
   });
 }
 
+// Windows-1252 punctuation that shows up in the corpus as C1 numeric entities
+// (e.g. &#146; → U+0092). Decoding these literally yields invisible control
+// chars; remap the common ones to the Unicode punctuation they actually mean.
+const CP1252_PUNCT = new Map<number, string>([
+  [0x82, "‚"],
+  [0x84, "„"],
+  [0x85, "…"],
+  [0x86, "†"],
+  [0x87, "‡"],
+  [0x91, "‘"],
+  [0x92, "’"],
+  [0x93, "“"],
+  [0x94, "”"],
+  [0x95, "•"],
+  [0x96, "–"],
+  [0x97, "—"],
+]);
+
 function safeFromCodePoint(cp: number): string {
-  // Drop control chars except newline/tab; clamp surrogates.
+  // Clamp out-of-range and surrogates; drop C0 controls except newline/tab.
   if (cp < 0 || cp > 0x10ffff) return "";
   if (cp >= 0xd800 && cp <= 0xdfff) return "";
   if (cp < 0x20 && cp !== 0x09 && cp !== 0x0a) return "";
+  // DEL + C1 range (0x7f–0x9f): remap known Windows-1252 punctuation to real
+  // Unicode (recovers apostrophes/quotes), otherwise drop the invisible control.
+  if (cp >= 0x7f && cp <= 0x9f) return CP1252_PUNCT.get(cp) ?? "";
   return String.fromCodePoint(cp);
 }
 
@@ -115,10 +138,7 @@ function safeFromCodePoint(cp: number): string {
 export function cleanEnglishText(raw: string | null | undefined): string {
   if (!raw) return "";
   return decodeEntities(
-    raw
-      .replace(HTML_P_RE, "\n")
-      .replace(HTML_BR_RE, "\n")
-      .replace(HTML_ANY_TAG_RE, ""),
+    raw.replace(HTML_P_RE, "\n").replace(HTML_BR_RE, "\n").replace(HTML_ANY_TAG_RE, ""),
   )
     .replace(/[ \t]+/g, " ")
     .replace(/ \n/g, "\n")
@@ -130,17 +150,14 @@ export function cleanEnglishText(raw: string | null | undefined): string {
 // `?[`'‘’ʻʼ]?` accepts ASCII backtick/quote and the common
 // Unicode left/right single quotes plus the `ʻ`/`ʼ` modifier-letter apostrophes
 // used in Arabic-name transliterations (`Aisha, ʻUmar, etc.).
-const NARRATOR_PREFIX_RE =
-  /^\s*(?:<p[^>]*>\s*)?Narrated\s+[`'‘’ʻʼ]?(.+?):/i;
+const NARRATOR_PREFIX_RE = /^\s*(?:<p[^>]*>\s*)?Narrated\s+[`'‘’ʻʼ]?(.+?):/i;
 
 /**
  * Extract the narrator name from the "Narrated X:" prefix at the start of
  * englishText. Returns the first narrator only — compound forms like
  * "Narrated A and B:" come through as a single string ("A and B").
  */
-export function extractNarratorFromEnglish(
-  raw: string | null | undefined,
-): string | null {
+export function extractNarratorFromEnglish(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const cleaned = raw.replace(/^\s+/, "");
   const m = cleaned.match(NARRATOR_PREFIX_RE);
@@ -154,9 +171,7 @@ export function extractNarratorFromEnglish(
  */
 export function stripNarratorPrefix(raw: string | null | undefined): string {
   const cleaned = cleanEnglishText(raw);
-  return cleaned
-    .replace(/^Narrated\s+[`'‘’ʻʼ]?[^:]+:\s*/i, "")
-    .trim();
+  return cleaned.replace(/^Narrated\s+[`'‘’ʻʼ]?[^:]+:\s*/i, "").trim();
 }
 
 // ── Narrator normalization (for filter matching) ────────────────────────────

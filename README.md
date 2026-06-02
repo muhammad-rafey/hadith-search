@@ -1,6 +1,8 @@
 # Hadith Search
 
-Semantic search over Sahih al-Bukhari (English + Arabic), with hybrid BM25 + vector retrieval and cross-encoder reranking. Web app first; mobile app planned for later.
+Semantic search over Sahih al-Bukhari (English + Arabic), with hybrid BM25 + vector retrieval and cross-encoder reranking. A Next.js web app and an Expo mobile app share one backend.
+
+> **This README is partly historical.** The real corpus is loaded, the live backend is the Next.js `/api/*` BFF (the Supabase Edge Functions have been retired and removed), and the Expo mobile app exists today. Trust the code (and `CLAUDE.md`) over the historical bits below.
 
 See the full architecture and roadmap in [`plan/`](./plan/README.md).
 
@@ -9,16 +11,15 @@ See the full architecture and roadmap in [`plan/`](./plan/README.md).
 ```text
 hadith-search/
 ├── apps/
-│   └── web/                Next.js 15 (App Router) web app
+│   ├── web/                Next.js 15 (App Router) web app + the shared /api/* backend (BFF)
+│   └── mobile/             Expo mobile app (calls the web app's /api/*)
 ├── packages/
-│   └── shared-types/       Zod schemas shared between web and Edge Function
+│   └── shared-types/       Zod schemas shared between the web app, mobile app, and the BFF API routes
 ├── supabase/
 │   ├── config.toml
-│   ├── migrations/         Postgres schema (placeholder until real dump)
-│   ├── functions/
-│   │   └── search/         Hybrid search + Cohere rerank Edge Function
-│   └── seed.sql            10 sample hadiths for local dev
-├── plan/                   Architectural plans (source of truth)
+│   ├── migrations/         Postgres schema (pgvector + hybrid search RPCs)
+│   └── seed.sql            10 mock hadiths for local `supabase db reset` dev
+├── plan/                   Architectural plans (partly historical; useful for the *why*)
 └── .github/workflows/      CI
 ```
 
@@ -44,13 +45,12 @@ cp .env.example .env.local
 ### Run locally
 
 ```bash
-# Terminal 1: Supabase (Postgres + Studio + Edge Functions runtime)
-supabase start
-supabase db reset             # applies migrations + seed
-supabase functions serve search
-
-# Terminal 2: Web app
+# Web app + the /api/* backend (BFF) — this serves both the UI and the API
 pnpm dev                      # opens http://localhost:3000
+
+# Optional: local Supabase (Postgres + Studio) for offline dev
+supabase start
+supabase db reset             # applies migrations + seeds 10 mock hadiths
 ```
 
 ### Useful commands
@@ -64,16 +64,21 @@ pnpm format        # format with Biome
 
 ## Status
 
-This is **scaffolded** with placeholder schema and 10 sample hadiths. The real corpus
-ships once the data dump arrives — see `plan/05-roadmap.md` Phase 1.
+The real corpus is **loaded**. The production `hadith_table` holds ~45k rows across 15 collections;
+today only Sahih al-Bukhari (~7,277 rows) is embedded and exposed by search. The 10 mock hadiths
+are now just the local `supabase db reset` seed for offline dev — not the production corpus.
 
-Three things are blocked on user-provided inputs:
+Search runs as a hybrid pipeline: bilingual (English + Arabic) FTS + pgvector, fused by Reciprocal
+Rank Fusion, then a cross-encoder rerank (Cohere or a local BGE-M3 server, selected by
+`EMBED_PROVIDER`); embeddings are 1024-dim.
 
-1. **Data dump.** Phase 1 (real schema design + migrations) waits on the dump.
-2. **Sunnah.com permission.** Required before bundling/serving the canonical translation.
-3. **Third-party credentials.** Cohere API key, real Supabase project, Sentry DSN, PostHog key.
+A couple of things still depend on user-provided inputs:
 
-Until those land, `.env.local` placeholders + the seed corpus let everything compile and run end-to-end against local Supabase.
+1. **Sunnah.com permission.** Required before bundling/serving the canonical translation.
+2. **Third-party credentials.** Cohere API key, real Supabase project, Sentry DSN, PostHog key.
+
+With placeholder `.env.local` values everything still compiles and runs end-to-end in degraded mode
+against local Supabase.
 
 ## License
 

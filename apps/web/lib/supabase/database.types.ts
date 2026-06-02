@@ -3,15 +3,11 @@
 //
 //   npx supabase gen types typescript --project-id zxfsqprzoremabtgqfer > apps/web/lib/supabase/database.types.ts
 //
-// (or call the MCP tool from Claude Code).
+// (or call the MCP tool from Claude Code). Extension internals (show_limit,
+// show_trgm) are omitted; the server admin client is currently untyped, so this
+// file is documentation-grade until a <Database> generic is wired up.
 
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   __InternalSupabase: {
@@ -79,15 +75,266 @@ export type Database = {
         };
         Relationships: [];
       };
+      hadith_embeddings: {
+        Row: {
+          arabic_urn: number;
+          created_at: string;
+          embedding: unknown;
+          model: string;
+          text_hash: string;
+          updated_at: string;
+        };
+        Insert: {
+          arabic_urn: number;
+          created_at?: string;
+          embedding: unknown;
+          model?: string;
+          text_hash: string;
+          updated_at?: string;
+        };
+        Update: {
+          arabic_urn?: number;
+          created_at?: string;
+          embedding?: unknown;
+          model?: string;
+          text_hash?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "hadith_embeddings_arabic_urn_fkey";
+            columns: ["arabic_urn"];
+            isOneToOne: true;
+            referencedRelation: "hadith_table";
+            referencedColumns: ["arabicURN"];
+          },
+        ];
+      };
+      query_cache: {
+        Row: {
+          created_at: string;
+          expires_at: string;
+          query_hash: string;
+          results: Json;
+        };
+        Insert: {
+          created_at?: string;
+          expires_at: string;
+          query_hash: string;
+          results: Json;
+        };
+        Update: {
+          created_at?: string;
+          expires_at?: string;
+          query_hash?: string;
+          results?: Json;
+        };
+        Relationships: [];
+      };
+      search_logs: {
+        Row: {
+          created_at: string;
+          degraded: boolean;
+          has_filter: boolean;
+          id: number;
+          language: string;
+          latency_ms: number;
+          mode: string;
+          query_hash: string;
+          query_length: number;
+          result_count: number;
+          user_id: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          degraded?: boolean;
+          has_filter?: boolean;
+          id?: number;
+          language: string;
+          latency_ms: number;
+          mode: string;
+          query_hash: string;
+          query_length: number;
+          result_count: number;
+          user_id?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          degraded?: boolean;
+          has_filter?: boolean;
+          id?: number;
+          language?: string;
+          latency_ms?: number;
+          mode?: string;
+          query_hash?: string;
+          query_length?: number;
+          result_count?: number;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
+      feedback: {
+        Row: {
+          created_at: string;
+          hadith_id: number;
+          id: string;
+          position: number;
+          query_hash: string;
+          thumb: string;
+          user_id: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          hadith_id: number;
+          id?: string;
+          position: number;
+          query_hash: string;
+          thumb: string;
+          user_id?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          hadith_id?: number;
+          id?: string;
+          position?: number;
+          query_hash?: string;
+          thumb?: string;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "feedback_hadith_id_fkey";
+            columns: ["hadith_id"];
+            isOneToOne: false;
+            referencedRelation: "hadith_table";
+            referencedColumns: ["arabicURN"];
+          },
+        ];
+      };
+      bookmarks: {
+        Row: {
+          created_at: string;
+          hadith_id: number;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          hadith_id: number;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          hadith_id?: number;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "bookmarks_hadith_id_fkey";
+            columns: ["hadith_id"];
+            isOneToOne: false;
+            referencedRelation: "hadith_table";
+            referencedColumns: ["arabicURN"];
+          },
+        ];
+      };
     };
     Views: { [_ in never]: never };
     Functions: {
-      get_books_for_collection: {
-        Args: { p_collection: string };
+      search_bukhari_hybrid: {
+        Args: {
+          book_filter?: number;
+          match_count?: number;
+          narrator_filter?: string;
+          query_embedding: unknown;
+          query_text: string;
+          rrf_k?: number;
+          ts_config?: unknown;
+        };
         Returns: {
-          book_name_en: string;
+          arabic_bab_name: string;
+          arabic_grade: string;
+          arabic_text: string;
+          arabic_urn: number;
+          book_number: number;
+          english_bab_name: string;
+          english_grade: string;
+          english_text: string;
+          hadith_number_raw: string;
+          our_hadith_number: number;
+          score: number;
+        }[];
+      };
+      get_bukhari_book_list: {
+        Args: never;
+        Returns: {
           book_number: number;
           hadith_count: number;
+        }[];
+      };
+      get_bukhari_book_hadiths: {
+        Args: { p_book: number; p_limit?: number; p_offset?: number };
+        Returns: {
+          arabic_bab_name: string;
+          arabic_grade: string;
+          arabic_text: string;
+          arabic_urn: number;
+          book_number: number;
+          english_bab_name: string;
+          english_grade: string;
+          english_text: string;
+          hadith_number_raw: string;
+          our_hadith_number: number;
+        }[];
+      };
+      get_bukhari_hadith_by_urn: {
+        Args: { p_urn: number };
+        Returns: {
+          arabic_bab_name: string;
+          arabic_grade: string;
+          arabic_text: string;
+          arabic_urn: number;
+          book_number: number;
+          english_bab_name: string;
+          english_grade: string;
+          english_text: string;
+          hadith_number_raw: string;
+          our_hadith_number: number;
+        }[];
+      };
+      get_bukhari_hadith_by_number: {
+        Args: { p_n: number };
+        Returns: {
+          arabic_bab_name: string;
+          arabic_grade: string;
+          arabic_text: string;
+          arabic_urn: number;
+          book_number: number;
+          english_bab_name: string;
+          english_grade: string;
+          english_text: string;
+          hadith_number_raw: string;
+          our_hadith_number: number;
+        }[];
+      };
+      get_bukhari_hadith_by_book_seq: {
+        Args: { p_book: number; p_seq: number };
+        Returns: {
+          arabic_bab_name: string;
+          arabic_grade: string;
+          arabic_text: string;
+          arabic_urn: number;
+          book_number: number;
+          english_bab_name: string;
+          english_grade: string;
+          english_text: string;
+          hadith_number_raw: string;
+          our_hadith_number: number;
+        }[];
+      };
+      get_bukhari_hadith_ids: {
+        Args: never;
+        Returns: {
+          arabic_urn: number;
         }[];
       };
     };
@@ -99,9 +346,8 @@ export type Database = {
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
 
-export type Tables<
-  T extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"]),
-> = (DefaultSchema["Tables"] & DefaultSchema["Views"])[T] extends { Row: infer R } ? R : never;
+export type Tables<T extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])> =
+  (DefaultSchema["Tables"] & DefaultSchema["Views"])[T] extends { Row: infer R } ? R : never;
 
 export type TablesInsert<T extends keyof DefaultSchema["Tables"]> =
   DefaultSchema["Tables"][T] extends { Insert: infer I } ? I : never;

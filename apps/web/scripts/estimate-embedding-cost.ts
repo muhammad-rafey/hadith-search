@@ -26,6 +26,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   cleanEnglishText,
   extractNarratorFromEnglish,
+  stripNarratorPrefix,
 } from "@hadith/shared-types/clean";
 
 const PAGE = 1000;
@@ -52,8 +53,8 @@ function passageFor(row: Row): string {
   const book = (row.bookNumber ?? "").trim() || "?";
   const chapter = cleanEnglishText(row.englishBabName).slice(0, 200);
   const narrator = extractNarratorFromEnglish(row.englishText);
-  const body = cleanEnglishText(row.englishText);
-  const head = `Book ${book}${chapter ? " | " + chapter : ""}`;
+  const body = stripNarratorPrefix(row.englishText);
+  const head = `Book ${book}${chapter ? ` | ${chapter}` : ""}`;
   const prefix = narrator ? `Narrated ${narrator}: ` : "";
   const passage = `${head} | ${prefix}${body}`.replace(/\s+/g, " ").trim();
   if (passage.length <= MAX_PASSAGE_CHARS) return passage;
@@ -113,7 +114,8 @@ async function main() {
   // Read-only: hadith_table is read-all under RLS, so the anon key suffices.
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL is required");
-  if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY is required");
+  if (!key)
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY is required");
   const onlyCollection = process.env.COLLECTION?.trim() || null;
 
   const supabase = createClient(url, key, {
@@ -198,7 +200,9 @@ async function main() {
   const embedHigh = (t.byWords / 1_000_000) * EMBED_USD_PER_1M_TOKENS;
   const [lo, hi] = embedLow <= embedHigh ? [embedLow, embedHigh] : [embedHigh, embedLow];
 
-  console.log(`\nTokenizer ratio: ${charsPerToken.toFixed(3)} chars/token${CALIBRATE ? " (calibrated)" : " (heuristic)"}`);
+  console.log(
+    `\nTokenizer ratio: ${charsPerToken.toFixed(3)} chars/token${CALIBRATE ? " (calibrated)" : " (heuristic)"}`,
+  );
   console.log(`Embed model: embed-v4.0 @ ${usd(EMBED_USD_PER_1M_TOKENS)}/1M tokens`);
   console.log(`  → one-time ingest of whole table: ${usd(lo)} – ${usd(hi)}`);
   console.log(
