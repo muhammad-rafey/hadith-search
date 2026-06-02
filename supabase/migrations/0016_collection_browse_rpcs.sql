@@ -23,8 +23,8 @@ create or replace function public.get_collection_list()
 returns table (collection text, hadith_count int)
 language sql
 stable
-security definer
-set search_path = public
+security invoker
+set search_path = pg_catalog, public
 as $$
   select h.collection::text, count(*)::int
   from public.hadith_table h
@@ -53,8 +53,8 @@ returns table (
 )
 language sql
 stable
-security definer
-set search_path = public
+security invoker
+set search_path = pg_catalog, public
 as $$
   select
     h.collection::text,
@@ -99,8 +99,8 @@ returns table (
 )
 language sql
 stable
-security definer
-set search_path = public
+security invoker
+set search_path = pg_catalog, public
 as $$
   select
     h.collection::text, h."arabicURN", h."bookNumber"::text, h."hadithNumber"::text,
@@ -133,8 +133,8 @@ returns table (
 )
 language sql
 stable
-security definer
-set search_path = public
+security invoker
+set search_path = pg_catalog, public
 as $$
   with q as (
     select regexp_replace(lower(coalesce(p_number, '')), '\s+', '', 'g') as n

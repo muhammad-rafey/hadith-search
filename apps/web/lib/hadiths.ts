@@ -155,10 +155,12 @@ export const getHadithById = cache(async (id: string): Promise<Hadith | null> =>
     // Real URNs are large (≥100k); a small value is a legacy
     // "{collection}:{hadithNumber}" link, so fall back to a number lookup when
     // the URN misses. URNs and hadith numbers don't overlap, so no ambiguity.
-    const byUrn = await tryRpc("get_hadith_by_collection_urn", {
-      p_collection: collection,
-      p_urn: urn,
-    });
+    // Skip the URN probe past int4 max — it can't be a real URN and would only
+    // provoke a Postgres overflow error (caught, but a wasted round-trip).
+    const byUrn =
+      urn <= 2_147_483_647
+        ? await tryRpc("get_hadith_by_collection_urn", { p_collection: collection, p_urn: urn })
+        : null;
     if (byUrn) return byUrn;
     return tryRpc("get_hadith_by_collection_number", {
       p_collection: collection,

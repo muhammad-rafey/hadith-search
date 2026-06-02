@@ -51,7 +51,9 @@ export function JumpToHadith({
       const res = await fetch(
         `/api/collections/${encodeURIComponent(activeCollection)}/lookup?number=${encodeURIComponent(num)}`,
       );
-      if (res.status === 404) {
+      // 400 (e.g. an over-long number) and 404 both mean "no such hadith" to
+      // the user — show the friendlier not-found message (matches mobile).
+      if (res.status === 404 || res.status === 400) {
         setState("not_found");
         return;
       }

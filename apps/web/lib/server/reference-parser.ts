@@ -23,7 +23,7 @@ export type Reference =
   | { kind: "by_book_and_seq"; collection: string; book: number; seq: number };
 
 const MAX_REFERENCE_VALUE = 999_999; // bounds the by_book_and_seq integers.
-const MAX_NUMBER_LEN = 12; // "8a", "1001b", "521,522" all fit comfortably.
+const MAX_NUMBER_LEN = 12; // "8a" / "1001b" fit; the resolver caps the URN fallback at int4.
 
 // Recognised collection tokens → canonical slug. Longer aliases are matched
 // first (see the length-sorted alternation below) so "sahih al-bukhari" wins

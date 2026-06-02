@@ -345,7 +345,9 @@ async function resolveReference(
   if (byNumber) return byNumber;
   if (/^\d+$/.test(ref.value)) {
     const urn = Number.parseInt(ref.value, 10);
-    if (Number.isFinite(urn)) {
+    // Cap at int4 max — a larger value can't be a real URN and would overflow
+    // the p_urn int parameter (Postgres 22003).
+    if (Number.isFinite(urn) && urn <= 2_147_483_647) {
       return resolveGeneric(supabase, "get_hadith_by_collection_urn", {
         p_collection: ref.collection,
         p_urn: urn,

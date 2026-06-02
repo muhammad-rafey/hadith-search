@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getAllBooks, getAllHadithIds } from "@/lib/hadiths";
+import { getAllHadithIds, getCollectionList } from "@/lib/hadiths";
 import { getSiteUrl } from "@/lib/site";
 
 // Fixed date so re-deployments don't prompt crawlers to re-fetch unchanged pages.
@@ -26,10 +26,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  const [books, hadithIds] = await Promise.all([getAllBooks(), getAllHadithIds()]);
+  const [collections, hadithIds] = await Promise.all([getCollectionList(), getAllHadithIds()]);
 
-  const bookEntries: MetadataRoute.Sitemap = books.map((b) => ({
-    url: `${SITE}/browse/${b.book_number}`,
+  // Browse is collection-first now (/browse/{collection}); the old numeric
+  // /browse/{book} route is gone, so emit one URL per collection.
+  const collectionEntries: MetadataRoute.Sitemap = collections.map((c) => ({
+    url: `${SITE}/browse/${c.collection}`,
     lastModified: LAST_MODIFIED,
     changeFrequency: "monthly",
     priority: 0.7,
@@ -44,5 +46,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [...staticEntries, ...bookEntries, ...hadithEntries];
+  return [...staticEntries, ...collectionEntries, ...hadithEntries];
 }
