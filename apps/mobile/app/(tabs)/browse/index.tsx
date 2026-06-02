@@ -49,9 +49,21 @@ export default function BrowseScreen() {
       onRefresh={() => query.refetch()}
       contentContainerClassName="p-4 gap-3"
       ListHeaderComponent={
-        <Text size="sm" className="pb-1 text-muted-foreground">
-          {collections.length} collection{collections.length === 1 ? "" : "s"}.
-        </Text>
+        collections.length > 0 ? (
+          <Text size="sm" className="pb-1 text-muted-foreground">
+            {collections.length} collection{collections.length === 1 ? "" : "s"}.
+          </Text>
+        ) : null
+      }
+      ListEmptyComponent={
+        // Success but empty — usually a brief server hiccup (the API collapses a
+        // transient failure to an empty list). Keep the tab recoverable.
+        <EmptyState
+          title="No collections to show"
+          description="The server may be briefly unreachable. Pull down to refresh or try again."
+          ctaLabel="Retry"
+          onCta={() => query.refetch()}
+        />
       }
       renderItem={({ item }) => (
         <CollectionRow
