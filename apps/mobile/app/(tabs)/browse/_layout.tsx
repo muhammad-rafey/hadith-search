@@ -3,8 +3,8 @@ import * as React from "react";
 import { useTheme } from "@/components/theme-provider";
 import { hsl } from "@/lib/tokens";
 
-// Nested stack so /browse/[book] pushes within the Browse tab (the tab bar
-// stays visible; hadith detail, on the root stack, covers it).
+// Nested stack so /browse/[collection] pushes within the Browse tab (the tab
+// bar stays visible; hadith detail, on the root stack, covers it).
 export default function BrowseLayout() {
   const { theme } = useTheme();
   return (
@@ -18,7 +18,7 @@ export default function BrowseLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: "Browse" }} />
-      <Stack.Screen name="[book]" options={{ title: "Book" }} />
+      <Stack.Screen name="[collection]" options={{ title: "Collection" }} />
     </Stack>
   );
 }
