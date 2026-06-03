@@ -11,7 +11,7 @@ See the full architecture and roadmap in [`plan/`](./plan/README.md).
 ```text
 hadith-search/
 ├── apps/
-│   ├── web/                Next.js 15 (App Router) web app + the shared /api/* backend (BFF)
+│   ├── web/                Next.js 16 (App Router) web app + the shared /api/* backend (BFF)
 │   └── mobile/             Expo mobile app (calls the web app's /api/*)
 ├── packages/
 │   └── shared-types/       Zod schemas shared between the web app, mobile app, and the BFF API routes
