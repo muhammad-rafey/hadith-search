@@ -64,9 +64,25 @@ export function makeHadithId(collection: string, arabicURN: number): string {
 /**
  * Parse a "{collection}:{urn}" id into its parts. Returns null for any other
  * shape so callers can 404 cleanly. The collection is lowercased.
+ *
+ * Tolerates a percent-encoded id ("bukhari%3A1"). Next.js's App Router is
+ * inconsistent about decoding dynamic route params: `generateMetadata` receives
+ * the decoded value ("bukhari:1") while the page/route handler can receive the
+ * raw encoded form ("bukhari%3A1") for the same request — so the id's ":" must
+ * survive both. We decode defensively here (the single parse chokepoint) rather
+ * than at each route boundary. decodeURIComponent throws on a malformed escape,
+ * so fall back to the raw input, which then fails the regex and returns null —
+ * the same outcome as before for genuinely invalid ids. Decoding is idempotent
+ * for already-clean ids (no "%"), so request-body callers are unaffected.
  */
 export function parseHadithId(id: string): { collection: string; urn: number } | null {
-  const m = id.match(/^([a-z][a-z0-9_-]*):(\d+)$/i);
+  let decoded = id;
+  try {
+    decoded = decodeURIComponent(id);
+  } catch {
+    // malformed percent-encoding — keep the raw input; the regex below rejects it
+  }
+  const m = decoded.match(/^([a-z][a-z0-9_-]*):(\d+)$/i);
   if (!m) return null;
   const urn = Number.parseInt(m[2] ?? "", 10);
   if (!Number.isFinite(urn)) return null;
@@ -174,9 +190,16 @@ export function mapHadithRow(row: HadithRow): Hadith {
   // narrator on its own line, so keeping "Narrated X:" would print it twice.
   const bodyEn = stripNarratorPrefix(row.english_text);
   const narrator = extractNarratorFromEnglish(row.english_text);
-  const grades: { grader: string; grade: string }[] = [];
+  // One grade entry, graded by the collection itself, carrying both the English
+  // ("Sahih") and Arabic ("صحيح") forms. Emitted only when an English grade
+  // exists (the Arabic grade rides alongside it).
+  const grades: { grader: string; grade: string; grade_ar: string | null }[] = [];
   if (row.english_grade) {
-    grades.push({ grader: collectionName(row.collection), grade: row.english_grade });
+    grades.push({
+      grader: collectionName(row.collection),
+      grade: row.english_grade,
+      grade_ar: row.arabic_grade?.trim() || null,
+    });
   }
   return {
     id: makeHadithId(row.collection, row.arabic_urn),
@@ -188,6 +211,7 @@ export function mapHadithRow(row: HadithRow): Hadith {
     book_name_en: bookLabel ?? `Book ${book}`,
     chapter_number: null,
     chapter_title_en: row.english_bab_name?.trim() || null,
+    chapter_title_ar: cleanArabicText(row.arabic_bab_name) || null,
     in_book_ref: inBookRef(bookLabel, seq),
     usc_msa_ref: null,
     narrator,

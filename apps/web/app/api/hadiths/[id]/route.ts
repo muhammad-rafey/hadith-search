@@ -8,7 +8,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  // Next.js already decodes route params, so we don't double-decode here.
+  // The App Router may hand a route handler a percent-encoded id; parseHadithId
+  // decodes it defensively (see shared-types/map.ts), so this validates the same
+  // way whether the platform decoded the param or not.
   const { id } = await ctx.params;
   if (!parseHadithId(id)) {
     return NextResponse.json({ error: "invalid_id" }, { status: 400 });
