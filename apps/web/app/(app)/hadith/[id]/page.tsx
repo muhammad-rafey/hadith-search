@@ -132,10 +132,14 @@ export default async function HadithDetailPage({ params }: Params) {
               <dd>
                 {grade.grade}
                 {grade.grade_ar ? (
-                  <span dir="rtl" lang="ar" className="font-arabic">
+                  <>
                     {" · "}
-                    {grade.grade_ar}
-                  </span>
+                    {/* `bdi` isolates the RTL Arabic grade so the surrounding
+                        LTR text (separator + grader) keeps a sensible order. */}
+                    <bdi lang="ar" className="font-arabic">
+                      {grade.grade_ar}
+                    </bdi>
+                  </>
                 ) : null}{" "}
                 ({grade.grader})
               </dd>
