@@ -9,9 +9,13 @@ import type { Book, Hadith } from "./index";
  * English translation: Dr. Muhsin Khan (Darussalam edition), public-domain
  * matn text. Arabic is the well-attested classical text.
  */
-// `hadith_number_label` is derived (= String(hadith_number)) below so these
-// fixtures don't each have to repeat it.
-const MOCK_HADITHS_BASE: Omit<Hadith, "hadith_number_label">[] = [
+// `hadith_number_label`, `chapter_title_ar`, and each grade's `grade_ar` are
+// filled in by the `.map()` below (the fixtures are English-only), so these
+// objects don't each have to repeat them.
+type MockBase = Omit<Hadith, "hadith_number_label" | "chapter_title_ar" | "grades"> & {
+  grades: { grader: string; grade: string }[] | null;
+};
+const MOCK_HADITHS_BASE: MockBase[] = [
   {
     id: "bukhari:1",
     collection: "bukhari",
@@ -242,6 +246,9 @@ const MOCK_HADITHS_BASE: Omit<Hadith, "hadith_number_label">[] = [
 export const MOCK_HADITHS: Hadith[] = MOCK_HADITHS_BASE.map((h) => ({
   ...h,
   hadith_number_label: String(h.hadith_number),
+  // The fixtures carry no Arabic chapter name / grade; real corpus rows do.
+  chapter_title_ar: null,
+  grades: h.grades?.map((g) => ({ ...g, grade_ar: null })) ?? null,
 }));
 
 /**

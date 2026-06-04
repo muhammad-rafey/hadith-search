@@ -9,7 +9,8 @@ export const contentType = "image/png";
 
 export default async function OgImage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  // Next.js already decodes route params.
+  // The App Router may hand us a percent-encoded id here; getHadithById →
+  // parseHadithId decodes it defensively (see shared-types/map.ts).
   const h = await getHadithById(id);
   const siteHost = getSiteUrl().replace(/^https?:\/\//, "");
   const collection = h ? collectionName(h.collection) : null;

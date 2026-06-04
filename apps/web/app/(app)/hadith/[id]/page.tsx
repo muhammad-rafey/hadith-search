@@ -25,7 +25,8 @@ interface Params {
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params;
-  // Next.js already decodes route params — no double-decode.
+  // `parseHadithId` (inside getHadithById) tolerates a percent-encoded id, which
+  // the App Router can hand us here — see the note in shared-types/map.ts.
   const h = await getHadithById(id);
   if (!h) return { title: "Hadith not found" };
   const description = h.text_en.slice(0, 150);
@@ -99,6 +100,15 @@ export default async function HadithDetailPage({ params }: Params) {
         {h.chapter_title_en ? (
           <p className="text-lg text-[hsl(var(--muted-foreground))]">{h.chapter_title_en}</p>
         ) : null}
+        {h.chapter_title_ar ? (
+          <p
+            dir="rtl"
+            lang="ar"
+            className="font-arabic text-lg leading-relaxed text-[hsl(var(--muted-foreground))]"
+          >
+            {h.chapter_title_ar}
+          </p>
+        ) : null}
         <dl className="grid grid-cols-1 gap-x-6 gap-y-1 pt-2 text-xs text-[hsl(var(--muted-foreground))] sm:grid-cols-3">
           <div>
             <dt className="font-medium uppercase tracking-wider">Sunnah.com</dt>
@@ -120,7 +130,14 @@ export default async function HadithDetailPage({ params }: Params) {
             <div>
               <dt className="font-medium uppercase tracking-wider">Grade</dt>
               <dd>
-                {grade.grade} ({grade.grader})
+                {grade.grade}
+                {grade.grade_ar ? (
+                  <span dir="rtl" lang="ar" className="font-arabic">
+                    {" · "}
+                    {grade.grade_ar}
+                  </span>
+                ) : null}{" "}
+                ({grade.grader})
               </dd>
             </div>
           ) : null}

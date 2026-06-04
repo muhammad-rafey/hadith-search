@@ -66,6 +66,8 @@ export const HadithSchema = z.object({
   book_name_en: z.string(),
   chapter_number: z.number().int().nullable(),
   chapter_title_en: z.string().nullable(),
+  /** Chapter (bab) name in Arabic, cleaned of markup. */
+  chapter_title_ar: z.string().nullable(),
   in_book_ref: z.string(),
   usc_msa_ref: z.string().nullable(),
   narrator: z.string().nullable(),
@@ -73,7 +75,10 @@ export const HadithSchema = z.object({
   text_en: z.string(),
   text_en_full: z.string(),
   text_ar: z.string().nullable(),
-  grades: z.array(z.object({ grader: z.string(), grade: z.string() })).nullable(),
+  /** `grade_ar` is the Arabic-script grade (e.g. "صحيح" for "Sahih"); null when absent. */
+  grades: z
+    .array(z.object({ grader: z.string(), grade: z.string(), grade_ar: z.string().nullable() }))
+    .nullable(),
   urn: z.number().int().nullable(),
   language: LanguageSchema,
 });
