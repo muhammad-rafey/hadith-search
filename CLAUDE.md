@@ -13,8 +13,8 @@ Semantic search over Sahih al-Bukhari (English + Arabic). Hybrid retrieval (BM25
 pnpm workspaces, defined in `pnpm-workspace.yaml` as `apps/*` + `packages/*`. Note `supabase/` and `scripts/` are **not** workspace packages — they run via the Supabase CLI / node / python directly.
 
 ```
-apps/web/          Next.js 15 App Router. Hosts the UI AND the shared HTTP API (BFF).
-apps/mobile/       Expo SDK 52 / RN 0.76 / expo-router. Talks to the web app's /api.
+apps/web/          Next.js 16 App Router. Hosts the UI AND the shared HTTP API (BFF).
+apps/mobile/       Expo SDK 54 / RN 0.81 / expo-router. Talks to the web app's /api.
 packages/shared-types/   Zod schemas + row-mapping/text-cleaning utils. The web/API contract.
 supabase/          Postgres 15 + pgvector schema (migrations, RPCs) + local-dev seed.
 scripts/           One-shot data-ingestion tooling (dump → SQL → DB).
@@ -134,7 +134,7 @@ The chunked corpus under `supabase/seed/hadith_table/` is loaded by `load_chunks
 - **`database.types.ts` is generated** (`supabase gen types`) and can lag behind newer RPCs/migrations. Regenerate after schema changes rather than hand-editing. (Currently informational only — the server admin client is created untyped.)
 - **Bookmarks are local-only IDs.** Stored in a Zustand+AsyncStorage/localStorage store (`hadith-search:bookmarks`); full hadiths are hydrated on demand via `POST /api/hadiths/by-bookmark-ids`.
 - **Mobile env is build-time inlined.** Only `EXPO_PUBLIC_*` vars reach the app, from `apps/mobile/.env`. On a physical device, `EXPO_PUBLIC_API_URL` must be your machine's LAN IP, not `localhost`. Set `EXPO_PUBLIC_SHARE_BASE_URL` or share links leak the placeholder host.
-- **Don't bump React independently.** Root `package.json` `pnpm.overrides` pins `react`/`react-dom`/`@types/*` to 18.3.x and `react-native-reanimated`/`react-native-css-interop` so web and mobile stay on one React. These are deliberate.
+- **Don't bump React independently.** Root `package.json` `pnpm.overrides` pins `react`/`react-dom`/`@types/*` to 19.1.x and `react-native-reanimated`/`react-native-css-interop` so web and mobile stay on one React. These are deliberate. (Next.js 16 accepts React `^19.0.0` and RN 0.81 accepts `^19.1.0`, so the single pinned version satisfies both.)
 - **Degraded mode is the default-when-unconfigured state.** With no embedding backend (no `COHERE_API_KEY`, or `EMBED_PROVIDER=bge-local` with the server down), search still works (stub embedding, no rerank) and returns `degraded:true`. With placeholder Supabase env, the **web** app falls back to `MOCK_HADITHS` and runs fully offline; the **mobile** app does *not* have an offline mock path — it always needs a reachable `EXPO_PUBLIC_API_URL` (placeholder Supabase env there only skips attaching the JWT).
 - All `/api/*` routes are `runtime = "nodejs"` + `dynamic = "force-dynamic"` (the pipeline needs Node crypto + the embedding/rerank SDK + `fetch` to the local BGE server).
 - **Multilingual/multi-collection is deferred but mapped.** The data layer already holds 15 collections; reaching the end goal (free-text situation queries across collections + languages) needs, roughly: per-`(arabic_urn, lang)` embeddings (the PK is `arabic_urn` alone today), bilingual embedded passages (ingest currently embeds English-only), a `collection_filter` param on the bukhari RPCs (or generalized `search_hadith_hybrid`), per-language `ts_config`/GIN indexes, and query-language detection (today `req.language` only namespaces the cache). Do these when collection #2 / language #3 is actually scheduled — don't widen `hadith_table` with `urduText`-style columns reflexively.
