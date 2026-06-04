@@ -10,9 +10,11 @@ export default function BrowseLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: hsl(theme, "background") },
-        headerTitleStyle: { fontFamily: "Inter-SemiBold", color: hsl(theme, "foreground") },
-        headerTintColor: hsl(theme, "primary"),
+        // The header doubles as the colored top bar (mirrors <StatusBarStrip>
+        // on the headerless screens) so the OS status-bar icons stay visible.
+        headerStyle: { backgroundColor: hsl(theme, "primary") },
+        headerTitleStyle: { fontFamily: "Inter-SemiBold", color: hsl(theme, "primary-foreground") },
+        headerTintColor: hsl(theme, "primary-foreground"),
         headerShadowVisible: false,
         contentStyle: { backgroundColor: hsl(theme, "background") },
       }}

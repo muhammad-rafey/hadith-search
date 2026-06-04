@@ -1,9 +1,19 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import type * as React from "react";
-import { View } from "react-native";
+import { type StyleProp, type ViewStyle, View } from "react-native";
 import { cn } from "@/lib/utils";
 import { Pressable, type PressableProps } from "./pressable";
 import { Text } from "./text";
+
+// Subtle elevation so filled actions (primary/destructive) read as raised and
+// tappable. Android uses `elevation`; iOS needs the explicit shadow props.
+const FILLED_SHADOW: ViewStyle = {
+  elevation: 2,
+  shadowColor: "#000",
+  shadowOpacity: 0.12,
+  shadowRadius: 3,
+  shadowOffset: { width: 0, height: 1 },
+};
 
 /**
  * Button — same variant/size taxonomy as apps/web/components/ui/button.tsx,
@@ -14,7 +24,7 @@ const buttonVariants = cva("flex-row items-center justify-center gap-2 rounded-m
   variants: {
     variant: {
       default: "bg-primary",
-      outline: "border border-border bg-transparent",
+      outline: "border border-input bg-card",
       ghost: "bg-transparent",
       destructive: "bg-destructive",
       link: "bg-transparent",
@@ -38,11 +48,13 @@ const TEXT_COLOR: Record<NonNullable<VariantProps<typeof buttonVariants>["varian
 };
 
 export interface ButtonProps
-  extends Omit<PressableProps, "children">,
+  extends Omit<PressableProps, "children" | "style">,
     VariantProps<typeof buttonVariants> {
   children?: React.ReactNode;
   className?: string;
   textClassName?: string;
+  /** Plain style override (no function form — composed with the filled shadow). */
+  style?: StyleProp<ViewStyle>;
 }
 
 export function Button({
@@ -52,16 +64,19 @@ export function Button({
   className,
   textClassName,
   haptic = true,
+  style,
   ...rest
 }: ButtonProps) {
   const textColor = TEXT_COLOR[variant ?? "default"];
   const isCompact = size === "sm";
+  const isFilled = variant === "default" || variant === "destructive";
 
   return (
     <Pressable
       haptic={haptic}
       accessibilityRole="button"
       className={cn(buttonVariants({ variant, size }), className)}
+      style={isFilled ? [FILLED_SHADOW, style] : style}
       {...rest}
     >
       {typeof children === "string" ? (

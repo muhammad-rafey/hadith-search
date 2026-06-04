@@ -11,14 +11,6 @@ import { getSiteUrl } from "@/lib/site";
 
 export const revalidate = 86400;
 
-/**
- * Sunnah.com deep link for a hadith, e.g. "muslim:8a". The display label can
- * contain spaces (a comma-joined "521, 522"); Sunnah.com expects them stripped.
- */
-function sunnahComUrl(collection: string, label: string): string {
-  return `https://sunnah.com/${collection}:${label.replace(/\s+/g, "")}`;
-}
-
 interface Params {
   params: Promise<{ id: string }>;
 }
@@ -40,9 +32,6 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     description,
     alternates: {
       canonical: canonicalUrl,
-      types: {
-        "text/html": sunnahComUrl(h.collection, h.hadith_number_label),
-      },
     },
   };
 }
@@ -55,7 +44,6 @@ export default async function HadithDetailPage({ params }: Params) {
   const grade = h.grades?.[0];
   const collection = collectionName(h.collection);
   const canonicalUrl = `${getSiteUrl()}/hadith/${h.id}`;
-  const sunnahUrl = sunnahComUrl(h.collection, h.hadith_number_label);
 
   const articleJsonLd = {
     "@context": "https://schema.org",
@@ -70,9 +58,7 @@ export default async function HadithDetailPage({ params }: Params) {
     author: h.narrator ? { "@type": "Person", name: h.narrator } : undefined,
     publisher: {
       "@type": "Organization",
-      // Generic across collections — "Muhsin Khan" is only Bukhari's translator,
-      // so it can't be the attribution for Muslim/Nasai/… pages.
-      name: "Sunnah.com",
+      name: "Hadith Search",
     },
   };
 
@@ -110,12 +96,6 @@ export default async function HadithDetailPage({ params }: Params) {
           </p>
         ) : null}
         <dl className="grid grid-cols-1 gap-x-6 gap-y-1 pt-2 text-xs text-[hsl(var(--muted-foreground))] sm:grid-cols-3">
-          <div>
-            <dt className="font-medium uppercase tracking-wider">Sunnah.com</dt>
-            <dd>
-              {h.collection}:{h.hadith_number_label}
-            </dd>
-          </div>
           <div>
             <dt className="font-medium uppercase tracking-wider">In-book</dt>
             <dd>{h.in_book_ref}</dd>
@@ -166,14 +146,6 @@ export default async function HadithDetailPage({ params }: Params) {
       <footer className="flex flex-wrap items-center gap-2 border-t border-[hsl(var(--border))] pt-4">
         <BookmarkButton hadithId={h.id} />
         <ShareButton hadithId={h.id} />
-        <a
-          href={sunnahUrl}
-          rel="noreferrer external nofollow"
-          target="_blank"
-          className="ml-auto text-sm text-[hsl(var(--muted-foreground))] underline-offset-2 hover:underline"
-        >
-          View on Sunnah.com ↗
-        </a>
       </footer>
     </article>
   );

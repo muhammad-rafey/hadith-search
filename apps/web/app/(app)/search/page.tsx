@@ -2,14 +2,11 @@
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Filter, Info, Compass } from "lucide-react";
+import { Info, Compass } from "lucide-react";
 import type { SearchRequest, SearchResult } from "@hadith/shared-types";
 import { SearchBox } from "@/components/search-box";
 import { ResultList } from "@/components/result-list";
 import { JumpToHadith } from "@/components/jump-to-hadith";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { canonicalKey, useSearch } from "@/lib/queries/use-search";
 import { useUiStore } from "@/lib/store";
 import {
@@ -21,9 +18,6 @@ import {
 import { tokenizeQuery } from "@/lib/highlight";
 
 const QUERY_DEBOUNCE_MS = 250;
-const NARRATOR_DEBOUNCE_MS = 200;
-
-type BookOption = { book_number: number; book_name_en: string; hadith_count: number };
 
 export default function SearchPage() {
   return (
@@ -37,18 +31,12 @@ function SearchPageInner() {
   const params = useSearchParams();
   const initial = params.get("q") ?? "";
   const setLastQuery = useUiStore((s) => s.setLastQuery);
-  const bookFilter = useUiStore((s) => s.bookFilter);
-  const narratorFilter = useUiStore((s) => s.narratorFilter);
   // Subscribe to privateMode so a Settings-side toggle re-issues searches
   // with skip_cache: true instead of returning a stale cache.
   const privateMode = useUiStore((s) => s.privateMode);
-  const setBookFilter = useUiStore((s) => s.setBookFilter);
-  const setNarratorFilter = useUiStore((s) => s.setNarratorFilter);
-  const clearFilters = useUiStore((s) => s.clearFilters);
 
   const [query, setQuery] = React.useState(initial);
   const [debounced, setDebounced] = React.useState(initial);
-  const [debouncedNarrator, setDebouncedNarrator] = React.useState(narratorFilter);
   const search = useSearch();
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [hasQuery, setHasQuery] = React.useState(initial.trim().length > 0);
@@ -56,25 +44,10 @@ function SearchPageInner() {
   // so click analytics references the actual query hash, not the latest input.
   const [resultQueryHash, setResultQueryHash] = React.useState<string>("");
 
-  const booksQuery = useQuery<BookOption[]>({
-    queryKey: ["books"],
-    queryFn: async () => {
-      const res = await fetch("/api/books");
-      if (!res.ok) throw new Error("failed to load books");
-      return res.json();
-    },
-    staleTime: 24 * 60 * 60 * 1000,
-  });
-
   React.useEffect(() => {
     const t = setTimeout(() => setDebounced(query), QUERY_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [query]);
-
-  React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedNarrator(narratorFilter), NARRATOR_DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [narratorFilter]);
 
   const mutateAsync = search.mutateAsync;
 
@@ -93,8 +66,6 @@ function SearchPageInner() {
       query: trimmed,
       language: "en",
       topK: 10,
-      ...(bookFilter ? { book: bookFilter } : {}),
-      ...(debouncedNarrator.trim() ? { narrator: debouncedNarrator.trim() } : {}),
       skip_cache: privateMode,
     };
 
@@ -103,8 +74,6 @@ function SearchPageInner() {
       const queryHash = await sha256Hex(
         canonicalKey({
           language: vars.language,
-          book: vars.book ?? null,
-          narrator: vars.narrator ?? null,
           query: vars.query,
         }),
       );
@@ -114,8 +83,6 @@ function SearchPageInner() {
         query_hash: queryHash,
         query_length: trimmed.length,
         language: vars.language,
-        has_book_filter: !!vars.book,
-        has_narrator_filter: !!vars.narrator,
       });
       try {
         const data = await mutateAsync(vars);
@@ -137,7 +104,7 @@ function SearchPageInner() {
     return () => {
       cancelled = true;
     };
-  }, [debounced, bookFilter, debouncedNarrator, privateMode, setLastQuery]);
+  }, [debounced, privateMode, setLastQuery]);
 
   const tokens = React.useMemo(() => tokenizeQuery(debounced), [debounced]);
 
@@ -152,8 +119,6 @@ function SearchPageInner() {
     },
     [resultQueryHash],
   );
-
-  const hasFilters = bookFilter !== null || narratorFilter.trim().length > 0;
 
   let statusMessage = "";
   if (hasQuery) {
@@ -183,16 +148,6 @@ function SearchPageInner() {
         {statusMessage}
       </output>
 
-      <SearchFilters
-        bookFilter={bookFilter}
-        narratorFilter={narratorFilter}
-        books={booksQuery.data ?? []}
-        hasFilters={hasFilters}
-        onBookChange={setBookFilter}
-        onNarratorChange={setNarratorFilter}
-        onClear={clearFilters}
-      />
-
       <ResultList
         results={results}
         loading={search.isPending}
@@ -205,91 +160,6 @@ function SearchPageInner() {
 
       <JumpPanel />
     </div>
-  );
-}
-
-interface SearchFiltersProps {
-  bookFilter: number | null;
-  narratorFilter: string;
-  books: BookOption[];
-  hasFilters: boolean;
-  onBookChange: (n: number | null) => void;
-  onNarratorChange: (s: string) => void;
-  onClear: () => void;
-}
-
-/**
- * Filters that narrow the Sahih al-Bukhari semantic search (book + narrator,
- * both POSTed to /api/search). Presented as a clean labelled panel; the
- * collection-wide affordances live in <JumpPanel> below the results.
- */
-function SearchFilters({
-  bookFilter,
-  narratorFilter,
-  books,
-  hasFilters,
-  onBookChange,
-  onNarratorChange,
-  onClear,
-}: SearchFiltersProps) {
-  return (
-    <section
-      aria-labelledby="search-filters-heading"
-      className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]"
-    >
-      <div className="flex items-center justify-between gap-2 border-b border-[hsl(var(--border))] px-4 py-2.5">
-        <h2
-          id="search-filters-heading"
-          className="flex items-center gap-2 text-sm font-medium text-[hsl(var(--foreground))]"
-        >
-          <Filter className="h-4 w-4 text-[hsl(var(--muted-foreground))]" aria-hidden="true" />
-          Refine your search
-        </h2>
-        {hasFilters ? (
-          <Button type="button" size="sm" variant="ghost" onClick={onClear}>
-            Clear
-          </Button>
-        ) : null}
-      </div>
-      <div className="grid gap-4 p-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <label
-            htmlFor="book-filter"
-            className="block text-xs font-medium text-[hsl(var(--muted-foreground))]"
-          >
-            Book
-          </label>
-          <select
-            id="book-filter"
-            value={bookFilter ?? ""}
-            onChange={(e) => onBookChange(e.target.value === "" ? null : Number(e.target.value))}
-            className="h-10 w-full rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--background))]"
-          >
-            <option value="">All books</option>
-            {books.map((b) => (
-              <option key={b.book_number} value={b.book_number}>
-                {b.book_name_en} ({b.hadith_count})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <label
-            htmlFor="narrator-filter"
-            className="block text-xs font-medium text-[hsl(var(--muted-foreground))]"
-          >
-            Narrator
-          </label>
-          <Input
-            id="narrator-filter"
-            placeholder="e.g. Abu Hurairah"
-            value={narratorFilter}
-            onChange={(e) => onNarratorChange(e.target.value)}
-            className="h-10"
-          />
-        </div>
-      </div>
-    </section>
   );
 }
 

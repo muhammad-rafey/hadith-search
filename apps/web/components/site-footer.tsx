@@ -4,10 +4,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-[hsl(var(--border))] py-6 text-sm text-[hsl(var(--muted-foreground))]">
       <div className="container mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 sm:flex-row sm:justify-between">
-        <p>
-          Hadith Search &middot; Hadith collections &middot; Translation:{" "}
-          <span className="italic">Sunnah.com</span>
-        </p>
+        <p>Hadith Search &middot; Semantic search over hadith collections</p>
         <nav aria-label="Footer" className="flex items-center gap-4">
           <Link href="/" className="hover:underline">
             Home

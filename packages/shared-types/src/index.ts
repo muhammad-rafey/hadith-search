@@ -10,8 +10,6 @@ export type Language = z.infer<typeof LanguageSchema>;
 
 export const SearchRequestSchema = z.object({
   query: z.string().min(1).max(500),
-  book: z.number().int().positive().optional(),
-  narrator: z.string().min(1).max(100).optional(),
   language: LanguageSchema.default("en"),
   topK: z.number().int().min(1).max(20).default(10),
   /** When true, skip cache READ and cache WRITE for this request (Private mode). */

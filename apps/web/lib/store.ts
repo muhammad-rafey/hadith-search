@@ -8,13 +8,6 @@ interface UiState {
   lastQuery: string;
   setLastQuery: (q: string) => void;
 
-  // Filter chips on the search page.
-  bookFilter: number | null;
-  narratorFilter: string;
-  setBookFilter: (n: number | null) => void;
-  setNarratorFilter: (s: string) => void;
-  clearFilters: () => void;
-
   // Private mode disables the server-side query_cache write
   // (see plan/03-analytics-monitoring.md).
   privateMode: boolean;
@@ -31,11 +24,6 @@ export const useUiStore = create<UiState>()(
     (set) => ({
       lastQuery: "",
       setLastQuery: (q) => set({ lastQuery: q }),
-      bookFilter: null,
-      narratorFilter: "",
-      setBookFilter: (n) => set({ bookFilter: n }),
-      setNarratorFilter: (s) => set({ narratorFilter: s }),
-      clearFilters: () => set({ bookFilter: null, narratorFilter: "" }),
       privateMode: false,
       setPrivateMode: (v) => set({ privateMode: v }),
       showArabic: true,

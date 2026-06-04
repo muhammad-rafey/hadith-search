@@ -16,13 +16,6 @@ import { apiFetch } from "@/lib/api";
  * so the UI shows a clean "not found" state instead of a failure banner.)
  */
 
-/** A bukhari book, used only by the semantic-search book filter. */
-export interface BookSummary {
-  book_number: number;
-  book_name_en: string;
-  hadith_count: number;
-}
-
 /** One collection on the Browse landing (display names already resolved server-side). */
 export interface CollectionSummary {
   collection: string;
@@ -30,14 +23,6 @@ export interface CollectionSummary {
   arabic_name: string | null;
   hadith_count: number;
 }
-
-const BookListSchema = z.array(
-  z.object({
-    book_number: z.number().int().positive(),
-    book_name_en: z.string(),
-    hadith_count: z.number().int().nonnegative(),
-  }),
-);
 
 const CollectionListSchema = z.array(
   z.object({
@@ -60,11 +45,6 @@ async function jsonOrThrow<T>(res: Response, label: string, schema: z.ZodType<T>
   const parsed = schema.safeParse(await res.json());
   if (!parsed.success) throw new Error(`${label} response malformed`);
   return parsed.data;
-}
-
-export async function getAllBooks(): Promise<BookSummary[]> {
-  const res = await apiFetch("/api/books");
-  return jsonOrThrow(res, "getAllBooks", BookListSchema);
 }
 
 /** All 15 collections + counts, ordered for the Browse landing. */

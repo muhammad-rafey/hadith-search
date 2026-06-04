@@ -1,13 +1,14 @@
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import * as React from "react";
 import { ActivityIndicator, FlatList, View } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { collectionName, type Hadith } from "@hadith/shared-types";
 import { EmptyState } from "@/components/empty-state";
 import { Icon } from "@/components/icon";
+import { StatusBarStrip } from "@/components/status-bar-strip";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
@@ -15,7 +16,7 @@ import { getHadithsByIds } from "@/lib/hadiths";
 import { useBookmarks } from "@/lib/queries/use-bookmarks";
 
 export default function BookmarksScreen() {
-  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const router = useRouter();
   const ids = useBookmarks((s) => s.ids);
   const remove = useBookmarks((s) => s.remove);
@@ -30,11 +31,12 @@ export default function BookmarksScreen() {
   const items = itemsQuery.data ?? [];
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background">
+      <StatusBarStrip />
       <FlatList
         data={items}
         keyExtractor={(h) => h.id}
-        contentContainerClassName="p-4 gap-3"
+        contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: tabBarHeight + 16 }}
         ListHeaderComponent={
           <View className="pb-1">
             <Text size="2xl" weight="semibold">

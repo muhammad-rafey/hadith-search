@@ -107,7 +107,7 @@ export function JumpToHadith({
             inputMode="text"
             placeholder="e.g. 8a"
             accessibilityLabel="Hadith number to jump to"
-            className="h-10 w-24"
+            className="h-11 w-24"
           />
         </View>
         <Button

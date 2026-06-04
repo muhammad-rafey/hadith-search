@@ -25,10 +25,21 @@ export const Input = React.forwardRef<TextInput, InputProps>(
         ref={ref}
         placeholderTextColor={hsl(theme, "muted-foreground")}
         className={cn(
-          "h-10 w-full rounded-md border border-input bg-transparent px-3 text-foreground",
+          "h-11 w-full rounded-md border border-input bg-transparent px-3 text-foreground",
           className,
         )}
-        style={[{ fontSize, fontFamily: "Inter-Regular" }, style]}
+        // Android clips tall glyphs (descenders) when the line box is tighter
+        // than the font — give the text room and center it vertically.
+        style={[
+          {
+            fontSize,
+            lineHeight: Math.round(fontSize * 1.3),
+            fontFamily: "Inter-Regular",
+            paddingVertical: 0,
+            textAlignVertical: "center",
+          },
+          style,
+        ]}
         {...props}
       />
     );
