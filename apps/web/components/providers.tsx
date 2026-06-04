@@ -47,9 +47,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         // property so only the path is recorded.
         sanitize_properties: (properties) => {
           const stripQuery = (value: unknown): unknown => {
-            if (typeof value !== "string") return value;
+            if (typeof value !== "string" || value === "") return value;
             try {
-              const url = new URL(value);
+              // Resolve relative values (e.g. "/search?q=…") against the origin
+              // so their query/hash get stripped too — bare `new URL()` throws on
+              // relative input and would otherwise leak the raw query unstripped.
+              const url = new URL(value, window.location.origin);
               url.search = "";
               url.hash = "";
               return url.toString();

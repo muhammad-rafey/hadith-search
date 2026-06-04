@@ -8,7 +8,7 @@ green CI-parity build.
 
 > Scope note: the immediate launch target is the **web app on Vercel**. The mobile
 > (Expo) app is a *separate* launch that still needs the items in
-> [§7 Mobile](#7-mobile--pre-store-submission) before store submission.
+> [§7 Mobile](#7-mobile--pre-store-submission-not-web-blocking) before store submission.
 
 ## Verdict
 

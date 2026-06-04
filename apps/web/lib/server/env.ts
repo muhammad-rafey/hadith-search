@@ -16,9 +16,8 @@ export function numEnv(
   opts?: { min?: number; max?: number; int?: boolean },
 ): number {
   const raw = process.env[name];
-  if (raw === undefined || raw.trim() === "") return fallback;
-  let n = Number(raw);
-  if (!Number.isFinite(n)) return fallback;
+  const parsed = raw === undefined || raw.trim() === "" ? fallback : Number(raw);
+  let n = Number.isFinite(parsed) ? parsed : fallback;
   if (opts?.int) n = Math.trunc(n);
   if (opts?.min !== undefined && n < opts.min) n = opts.min;
   if (opts?.max !== undefined && n > opts.max) n = opts.max;
