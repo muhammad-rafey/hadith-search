@@ -19,12 +19,13 @@ import {
   rerankCandidates,
   toPgVectorLiteral,
 } from "./cohere";
+import { numEnv } from "./env";
 import { canonicalKey, normalizeQuery, sha256Hex } from "./hash";
 import { TtlLru } from "./lru-cache";
 import { parseReference, type Reference } from "./reference-parser";
 import { getSupabaseAdmin } from "./supabase-admin";
 
-const CACHE_TTL_DAYS = Number(process.env.CACHE_TTL_DAYS ?? 7);
+const CACHE_TTL_DAYS = numEnv("CACHE_TTL_DAYS", 7, { min: 0 });
 
 // Hybrid retrieval pool size. We over-fetch a wide candidate set (FTS + vector,
 // fused by RRF) and let the cross-encoder reranker pick the true top results
@@ -34,7 +35,7 @@ const CACHE_TTL_DAYS = Number(process.env.CACHE_TTL_DAYS ?? 7);
 // ~4-5s on local MPS, and a smaller vector fetch also keeps the cold-start RPC
 // (first query loads the HNSW index) under Postgres's statement timeout. Raise
 // it when the reranker runs on a GPU or via Cohere.
-const RETRIEVE_COUNT = Number(process.env.RETRIEVE_COUNT ?? 40);
+const RETRIEVE_COUNT = numEnv("RETRIEVE_COUNT", 40, { min: 1, max: 100, int: true });
 
 // Minimum reranker relevance for a result to be shown — the lever that cuts the
 // off-topic tail (kNN/RRF always return SOME rows; below this score they're
@@ -43,7 +44,7 @@ const RETRIEVE_COUNT = Number(process.env.RETRIEVE_COUNT ?? 40);
 // floor sits just above the noise floor, NOT at a Cohere-style 0.3. Only applied
 // when the reranker actually ran (never in degraded mode, where scores are
 // synthetic RRF-order placeholders). Tune via MIN_RELEVANCE.
-const MIN_RELEVANCE = Number(process.env.MIN_RELEVANCE ?? 0.02);
+const MIN_RELEVANCE = numEnv("MIN_RELEVANCE", 0.02, { min: 0, max: 1 });
 
 const lru = new TtlLru<string, SearchResponse>();
 

@@ -41,6 +41,27 @@ export function Providers({ children }: { children: React.ReactNode }) {
         autocapture: false,
         disable_session_recording: true,
         persistence: "localStorage+cookie",
+        // Privacy: the search box navigates to /search?q=<raw query>, so the URL
+        // attached to pageviews/events would otherwise ship the user's raw query
+        // text to PostHog. Strip the query string + hash from every URL-bearing
+        // property so only the path is recorded.
+        sanitize_properties: (properties) => {
+          const stripQuery = (value: unknown): unknown => {
+            if (typeof value !== "string") return value;
+            try {
+              const url = new URL(value);
+              url.search = "";
+              url.hash = "";
+              return url.toString();
+            } catch {
+              return value;
+            }
+          };
+          for (const key of ["$current_url", "$referrer"]) {
+            if (key in properties) properties[key] = stripQuery(properties[key]);
+          }
+          return properties;
+        },
       });
     }
   }, []);

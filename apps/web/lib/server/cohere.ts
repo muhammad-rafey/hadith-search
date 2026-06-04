@@ -2,8 +2,10 @@ import "server-only";
 
 import { CohereClient, CohereClientV2 } from "cohere-ai";
 
-const EMBED_TIMEOUT_MS = Number(process.env.EMBED_TIMEOUT_MS ?? 1500);
-const RERANK_TIMEOUT_MS = Number(process.env.RERANK_TIMEOUT_MS ?? 2000);
+import { numEnv } from "./env";
+
+const EMBED_TIMEOUT_MS = numEnv("EMBED_TIMEOUT_MS", 1500, { min: 1 });
+const RERANK_TIMEOUT_MS = numEnv("RERANK_TIMEOUT_MS", 2000, { min: 1 });
 const EMBED_MODEL = "embed-v4.0";
 const RERANK_MODEL = "rerank-v4.0-pro";
 const EMBED_DIM = 1024;
@@ -19,13 +21,13 @@ const BGE_EMBED_URL = process.env.BGE_EMBED_URL ?? "http://127.0.0.1:8000";
 const BGE_MODEL_ID = "bge-m3";
 // Local MPS inference: a warm query encode is tens of ms, but the first call
 // and large ingest batches need real headroom — keep these generous.
-const BGE_QUERY_TIMEOUT_MS = Number(process.env.BGE_QUERY_TIMEOUT_MS ?? 8000);
-const BGE_DOC_TIMEOUT_MS = Number(process.env.BGE_DOC_TIMEOUT_MS ?? 120_000);
+const BGE_QUERY_TIMEOUT_MS = numEnv("BGE_QUERY_TIMEOUT_MS", 8000, { min: 1 });
+const BGE_DOC_TIMEOUT_MS = numEnv("BGE_DOC_TIMEOUT_MS", 120_000, { min: 1 });
 // Local reranker (bge-reranker-v2-m3) lives on the same server by default.
 // Scoring a pool of ~60-80 (query, doc) pairs on MPS takes a couple of seconds
 // from cold and well under a second warm — keep the timeout generous.
 const BGE_RERANK_URL = process.env.BGE_RERANK_URL ?? BGE_EMBED_URL;
-const BGE_RERANK_TIMEOUT_MS = Number(process.env.BGE_RERANK_TIMEOUT_MS ?? 20_000);
+const BGE_RERANK_TIMEOUT_MS = numEnv("BGE_RERANK_TIMEOUT_MS", 20_000, { min: 1 });
 
 /** POST a batch of texts to the local BGE-M3 server and return the vectors. */
 async function bgeEmbed(

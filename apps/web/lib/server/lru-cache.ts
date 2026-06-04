@@ -1,5 +1,7 @@
 import "server-only";
 
+import { numEnv } from "./env";
+
 /**
  * Minimal LRU with TTL. Per Vercel isolate, fronts the Postgres query_cache so
  * burst-of-same-query traffic hits zero DB rows.
@@ -7,8 +9,8 @@ import "server-only";
 
 type Entry<V> = { value: V; expiresAt: number };
 
-const TTL_MS = Number(process.env.LRU_TTL_MS ?? 5 * 60 * 1000);
-const CAPACITY = Number(process.env.LRU_CAPACITY ?? 50);
+const TTL_MS = numEnv("LRU_TTL_MS", 5 * 60 * 1000, { min: 0 });
+const CAPACITY = numEnv("LRU_CAPACITY", 50, { min: 1, int: true });
 
 export class TtlLru<K, V> {
   private map = new Map<K, Entry<V>>();

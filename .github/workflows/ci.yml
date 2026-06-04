@@ -24,6 +24,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Advisory (non-blocking): surfaces known CVEs in the dependency tree so
+      # they're visible in CI without blocking merges on un-fixable transitive
+      # advisories. Tighten to a blocking gate once the tree is clean.
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
+
       - name: Format check
         run: pnpm format:check
 

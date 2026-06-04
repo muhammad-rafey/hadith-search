@@ -30,16 +30,22 @@ export async function GET() {
       .select("query_hash", { head: true, count: "exact" })
       .limit(1);
     if (error) {
+      // Don't leak raw DB/PostgREST error text to anonymous callers — log it
+      // server-side and return only a coarse status + the boolean flags.
+      console.error("/api/health db error:", error.message.slice(0, 200));
       return NextResponse.json(
-        { ok: false, latency_ms: Date.now() - start, error: error.message.slice(0, 200), ...flags },
+        { ok: false, latency_ms: Date.now() - start, ...flags },
         { status: 503 },
       );
     }
     return NextResponse.json({ ok: true, latency_ms: Date.now() - start, ...flags });
   } catch (err) {
-    const msg = err instanceof Error ? err.message.slice(0, 200) : "unknown";
+    console.error(
+      "/api/health error:",
+      err instanceof Error ? err.message.slice(0, 200) : "unknown",
+    );
     return NextResponse.json(
-      { ok: false, latency_ms: Date.now() - start, error: msg, ...flags },
+      { ok: false, latency_ms: Date.now() - start, ...flags },
       { status: 503 },
     );
   }

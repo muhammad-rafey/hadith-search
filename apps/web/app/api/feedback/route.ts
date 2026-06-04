@@ -15,6 +15,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
+  // Feedback records are tiny; reject oversize payloads before parsing JSON.
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > 8_000) {
+    return NextResponse.json({ error: "request_too_large" }, { status: 413 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();

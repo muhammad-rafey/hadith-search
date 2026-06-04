@@ -1,0 +1,23 @@
+# Automated dependency update PRs. Groups minor/patch bumps to cut noise;
+# majors (breaking) open individually so they can be reviewed deliberately.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directories:
+      - "/"
+      - "/apps/web"
+      - "/apps/mobile"
+      - "/packages/shared-types"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

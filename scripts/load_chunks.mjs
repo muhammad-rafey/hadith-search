@@ -29,11 +29,34 @@ const client = new pg.Client({ connectionString: DATABASE_URL });
 await client.connect();
 
 try {
+  const force = process.argv.includes("--force");
   const files = (await readdir(SEED_DIR)).filter((f) => f.endsWith(".sql")).sort();
+  if (files.length === 0) {
+    throw new Error(`No .sql chunks found in ${SEED_DIR}`);
+  }
   console.log(`Loading ${files.length} chunk(s) from ${SEED_DIR}`);
 
-  // Idempotency: wipe before reload.
-  await client.query("truncate table public.hadith_table");
+  // Guard the destructive reload. hadith_embeddings has an ON DELETE CASCADE FK
+  // to hadith_table, so the TRUNCATE … CASCADE below also wipes the (expensive
+  // to recompute) embeddings. Refuse unless --force so an accidental re-run
+  // can't silently destroy an embedded corpus.
+  const { rows: embRows } = await client.query(
+    "select count(*)::int as n from public.hadith_embeddings",
+  );
+  const embCount = embRows[0]?.n ?? 0;
+  if (embCount > 0 && !force) {
+    throw new Error(
+      `hadith_embeddings has ${embCount} rows; TRUNCATE … CASCADE would delete them.\n` +
+        "Re-run with --force to proceed, then re-run `pnpm --filter @hadith/web ingest:embeddings`.",
+    );
+  }
+
+  // One transaction for the whole reload: TRUNCATE + every INSERT commit or roll
+  // back together. Without this, a failure partway (network blip, bad chunk,
+  // killed process) would leave hadith_table truncated or half-loaded — atomicity
+  // makes a failed reload a no-op instead of data loss.
+  await client.query("begin");
+  await client.query("truncate table public.hadith_table cascade");
 
   const t0 = Date.now();
   let total = 0;
@@ -49,10 +72,26 @@ try {
     }
   }
 
+  // Sanity check before committing: refuse to replace a full corpus with a stub
+  // if a chunk was silently dropped.
   const { rows } = await client.query("select count(*)::int as n from public.hadith_table");
-  console.log(`\nDone. public.hadith_table count(*) = ${rows[0].n}`);
+  const finalCount = rows[0]?.n ?? 0;
+  if (finalCount < 1000) {
+    throw new Error(`Only ${finalCount} rows loaded (expected thousands) — rolling back.`);
+  }
+
+  await client.query("commit");
+  console.log(`\nDone. public.hadith_table count(*) = ${finalCount}`);
+  if (embCount > 0) {
+    console.log("NOTE: embeddings were cascade-deleted — re-run ingest:embeddings.");
+  }
 } catch (err) {
-  console.error("Load failed:", err);
+  console.error("Load failed — rolling back:", err instanceof Error ? err.message : err);
+  try {
+    await client.query("rollback");
+  } catch {
+    /* no open transaction */
+  }
   process.exitCode = 1;
 } finally {
   await client.end();
