@@ -6,16 +6,40 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://hadith-search-web.vercel.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zxfsqprzoremabtgqfer.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_yAROnuRbytFECpFIv09rTw_MM2s9RjK",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://0b0992ea05412d69d50e228ccb6b2dd0@o4511488343080960.ingest.us.sentry.io/4511488370475008",
+        "EXPO_PUBLIC_SHARE_BASE_URL": "https://hadith-search-web.vercel.app/hadith/"
+      }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://hadith-search-web.vercel.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zxfsqprzoremabtgqfer.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_yAROnuRbytFECpFIv09rTw_MM2s9RjK",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://0b0992ea05412d69d50e228ccb6b2dd0@o4511488343080960.ingest.us.sentry.io/4511488370475008",
+        "EXPO_PUBLIC_SHARE_BASE_URL": "https://hadith-search-web.vercel.app/hadith/"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://hadith-search-web.vercel.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://zxfsqprzoremabtgqfer.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_yAROnuRbytFECpFIv09rTw_MM2s9RjK",
+        "EXPO_PUBLIC_POSTHOG_HOST": "https://us.i.posthog.com",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://0b0992ea05412d69d50e228ccb6b2dd0@o4511488343080960.ingest.us.sentry.io/4511488370475008",
+        "EXPO_PUBLIC_SHARE_BASE_URL": "https://hadith-search-web.vercel.app/hadith/"
+      }
     }
   },
   "submit": {

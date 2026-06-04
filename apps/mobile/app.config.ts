@@ -12,6 +12,7 @@ const config: ExpoConfig = {
   version: "0.0.1",
   orientation: "portrait",
   scheme: "hadithsearch",
+  owner: "slashcommit",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
   icon: "./assets/icon.png",
@@ -50,6 +51,11 @@ const config: ExpoConfig = {
   ],
   experiments: {
     typedRoutes: true,
+  },
+  extra: {
+    eas: {
+      projectId: "7f2f7c98-afe5-44a7-827b-176964f17bc6",
+    },
   },
 };
 
