@@ -67,8 +67,6 @@ export interface SearchSubmittedProps {
   query_hash: string;
   query_length: number;
   language: string;
-  has_book_filter: boolean;
-  has_narrator_filter: boolean;
 }
 export function searchSubmitted(props: SearchSubmittedProps): void {
   capture("search_submitted", { ...props });

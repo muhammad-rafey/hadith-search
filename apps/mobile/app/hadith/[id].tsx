@@ -7,6 +7,7 @@ import { ArabicSection } from "@/components/arabic-section";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { EmptyState } from "@/components/empty-state";
 import { ShareButton } from "@/components/share-button";
+import { StatusBarStrip } from "@/components/status-bar-strip";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
 import { type HadithViewSource, hadithNotFound, hadithViewed } from "@/lib/analytics";
@@ -69,11 +70,10 @@ export default function HadithDetailScreen() {
   const grade = h.grades?.[0];
   const collectionLabel = collectionName(h.collection);
   const heading = `${collectionLabel} ${h.hadith_number_label}`;
-  // Sunnah.com expects the ref without spaces (a label may be "521, 522").
-  const sunnahRef = `${h.collection}:${h.hadith_number_label.replace(/\s+/g, "")}`;
 
   return (
     <View className="flex-1 bg-background">
+      <StatusBarStrip />
       <Stack.Screen options={{ title: `${collectionLabel} ${h.hadith_number_label}` }} />
       <ScrollView contentContainerClassName="p-4 gap-6 pb-12">
         <View className="gap-2 border-b border-border pb-4">
@@ -101,7 +101,6 @@ export default function HadithDetailScreen() {
             </Text>
           ) : null}
           <View className="flex-row flex-wrap gap-x-6 gap-y-2 pt-2">
-            <Meta label="Sunnah.com" value={sunnahRef} />
             <Meta label="In-book" value={h.in_book_ref} />
             {h.usc_msa_ref ? <Meta label="USC-MSA" value={h.usc_msa_ref} /> : null}
             {grade ? <Meta label="Grade" value={`${grade.grade} (${grade.grader})`} /> : null}

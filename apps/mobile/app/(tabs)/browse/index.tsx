@@ -1,3 +1,4 @@
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import * as React from "react";
@@ -16,6 +17,7 @@ import { useCollectionList } from "@/lib/queries/use-collections";
  */
 export default function BrowseScreen() {
   const router = useRouter();
+  const tabBarHeight = useBottomTabBarHeight();
   const query = useCollectionList();
   const collections = query.data ?? [];
 
@@ -47,7 +49,7 @@ export default function BrowseScreen() {
       keyExtractor={(c) => c.collection}
       refreshing={query.isFetching && !query.isLoading}
       onRefresh={() => query.refetch()}
-      contentContainerClassName="p-4 gap-3"
+      contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: tabBarHeight + 16 }}
       ListHeaderComponent={
         collections.length > 0 ? (
           <Text size="sm" className="pb-1 text-muted-foreground">

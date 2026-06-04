@@ -43,7 +43,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <Providers>
-            <StatusBar style="auto" />
+            <StatusBar style="light" />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="hadith/[id]" options={{ presentation: "card" }} />

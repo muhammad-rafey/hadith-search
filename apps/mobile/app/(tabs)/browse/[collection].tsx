@@ -1,3 +1,4 @@
+import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as React from "react";
 import { ActivityIndicator, FlatList, View } from "react-native";
@@ -23,6 +24,7 @@ import { useCollectionHadiths } from "@/lib/queries/use-collections";
  */
 export default function CollectionScreen() {
   const router = useRouter();
+  const tabBarHeight = useBottomTabBarHeight();
   const { collection } = useLocalSearchParams<{ collection: string | string[] }>();
   // expo-router can return string | string[] for a dynamic segment; take the
   // first so a stray "/a/b" doesn't get mis-joined.
@@ -81,7 +83,7 @@ export default function CollectionScreen() {
         keyExtractor={(h) => h.id}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerClassName="p-4 gap-3"
+        contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: tabBarHeight + 16 }}
         onEndReachedThreshold={0.5}
         onEndReached={() => {
           if (query.hasNextPage && !query.isFetchingNextPage) query.fetchNextPage();

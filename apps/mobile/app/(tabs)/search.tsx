@@ -2,10 +2,9 @@ import { useRouter } from "expo-router";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
 import * as React from "react";
 import { View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { SearchRequest, SearchResult } from "@hadith/shared-types";
-import { FilterChips } from "@/components/filter-chips";
 import { Icon } from "@/components/icon";
+import { StatusBarStrip } from "@/components/status-bar-strip";
 import { JumpToHadith } from "@/components/jump-to-hadith";
 import { ResultList } from "@/components/result-list";
 import { SearchBox } from "@/components/search-box";
@@ -23,7 +22,6 @@ import { canonicalKey, useSearch } from "@/lib/queries/use-search";
 import { useUiStore } from "@/lib/store/ui-store";
 
 const QUERY_DEBOUNCE_MS = 250;
-const NARRATOR_DEBOUNCE_MS = 200;
 
 /**
  * Search screen — faithful port of apps/web/app/(app)/search/page.tsx:
@@ -33,20 +31,13 @@ const NARRATOR_DEBOUNCE_MS = 200;
  * ResultList; this screen owns input + filter state and request orchestration.
  */
 export default function SearchScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const bookFilter = useUiStore((s) => s.bookFilter);
-  const narratorFilter = useUiStore((s) => s.narratorFilter);
-  const setBookFilter = useUiStore((s) => s.setBookFilter);
-  const setNarratorFilter = useUiStore((s) => s.setNarratorFilter);
-  const clearFilters = useUiStore((s) => s.clearFilters);
   const lastQuery = useUiStore((s) => s.lastQuery);
   const setLastQuery = useUiStore((s) => s.setLastQuery);
 
   const [query, setQuery] = React.useState(lastQuery);
   const [debounced, setDebounced] = React.useState(lastQuery);
-  const [debouncedNarrator, setDebouncedNarrator] = React.useState(narratorFilter);
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [hasQuery, setHasQuery] = React.useState(lastQuery.trim().length > 0);
   const [jumpOpen, setJumpOpen] = React.useState(false);
@@ -59,13 +50,8 @@ export default function SearchScreen() {
     return () => clearTimeout(t);
   }, [query]);
 
-  React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedNarrator(narratorFilter), NARRATOR_DEBOUNCE_MS);
-    return () => clearTimeout(t);
-  }, [narratorFilter]);
-
   const runSearch = React.useCallback(
-    (raw: string, book: number | null, narrator: string) => {
+    (raw: string) => {
       const trimmed = raw.trim();
       if (!trimmed) {
         setResults([]);
@@ -79,8 +65,6 @@ export default function SearchScreen() {
         query: trimmed,
         language: "en",
         topK: 10,
-        ...(book ? { book } : {}),
-        ...(narrator.trim() ? { narrator: narrator.trim() } : {}),
       };
 
       let cancelled = false;
@@ -90,8 +74,6 @@ export default function SearchScreen() {
         const queryHash = await sha256Hex(
           canonicalKey({
             language: vars.language ?? "en",
-            book: vars.book ?? null,
-            narrator: vars.narrator ?? null,
             query: vars.query,
           }),
         );
@@ -99,8 +81,6 @@ export default function SearchScreen() {
           query_hash: queryHash,
           query_length: trimmed.length,
           language: vars.language ?? "en",
-          has_book_filter: !!vars.book,
-          has_narrator_filter: !!vars.narrator,
         });
         try {
           const data = await mutateAsync(vars);
@@ -125,10 +105,10 @@ export default function SearchScreen() {
     [mutateAsync, setLastQuery],
   );
 
-  // Fire whenever the debounced query or filters change (same deps as web).
+  // Fire whenever the debounced query changes (same deps as web).
   React.useEffect(() => {
-    return runSearch(debounced, bookFilter, debouncedNarrator);
-  }, [debounced, bookFilter, debouncedNarrator, runSearch]);
+    return runSearch(debounced);
+  }, [debounced, runSearch]);
 
   const tokens = React.useMemo(() => tokenizeQuery(debounced), [debounced]);
 
@@ -137,8 +117,6 @@ export default function SearchScreen() {
       const queryHash = await sha256Hex(
         canonicalKey({
           language: "en",
-          book: bookFilter,
-          narrator: debouncedNarrator || null,
           query: debounced.trim(),
         }),
       );
@@ -150,7 +128,7 @@ export default function SearchScreen() {
       });
       router.push(`/hadith/${encodeURIComponent(result.id)}?from=search`);
     },
-    [bookFilter, debounced, debouncedNarrator, router],
+    [debounced, router],
   );
 
   const onClear = React.useCallback(() => {
@@ -164,11 +142,12 @@ export default function SearchScreen() {
 
   const onRetry = React.useCallback(() => {
     search.reset();
-    runSearch(debounced, bookFilter, debouncedNarrator);
-  }, [search, runSearch, debounced, bookFilter, debouncedNarrator]);
+    runSearch(debounced);
+  }, [search, runSearch, debounced]);
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background">
+      <StatusBarStrip />
       <ResultList
         results={results}
         loading={search.isPending}
@@ -194,13 +173,6 @@ export default function SearchScreen() {
               onSubmit={() => setDebounced(query)}
               loading={search.isPending}
               autoFocus
-            />
-            <FilterChips
-              bookFilter={bookFilter}
-              narratorFilter={narratorFilter}
-              onBookChange={setBookFilter}
-              onNarratorChange={setNarratorFilter}
-              onClear={clearFilters}
             />
             <View className="rounded-lg border border-border bg-card">
               <Pressable

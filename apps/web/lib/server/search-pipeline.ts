@@ -106,8 +106,6 @@ export async function runSearch(
   const queryLength = req.query.length;
   const canonical = canonicalKey({
     language,
-    book: req.book ?? null,
-    narrator: req.narrator ?? null,
     query: req.query,
   });
   const query_hash = sha256Hex(canonical);
@@ -156,7 +154,7 @@ export async function runSearch(
         mode: "cache",
         language,
         result_count: response.results.length,
-        has_filter: Boolean(req.book || req.narrator),
+        has_filter: false,
         latency_ms: response.latency_ms,
         degraded: response.degraded ?? false,
       });
@@ -177,7 +175,7 @@ export async function runSearch(
         mode: "cache",
         language,
         result_count: response.results.length,
-        has_filter: Boolean(req.book || req.narrator),
+        has_filter: false,
         latency_ms: response.latency_ms,
         degraded: response.degraded ?? false,
       });
@@ -201,8 +199,8 @@ export async function runSearch(
     query_embedding: toPgVectorLiteral(embed.embedding),
     match_count: RETRIEVE_COUNT,
     rrf_k: 50,
-    book_filter: req.book ?? null,
-    narrator_filter: req.narrator ?? null,
+    book_filter: null,
+    narrator_filter: null,
     ts_config: "english",
   });
   if (error) {
@@ -223,7 +221,7 @@ export async function runSearch(
       mode: "empty",
       language,
       result_count: 0,
-      has_filter: Boolean(req.book || req.narrator),
+      has_filter: false,
       latency_ms: response.latency_ms,
       degraded: embed.degraded,
     });
@@ -295,7 +293,7 @@ export async function runSearch(
     mode: "fresh",
     language,
     result_count: response.results.length,
-    has_filter: Boolean(req.book || req.narrator),
+    has_filter: false,
     latency_ms: response.latency_ms,
     degraded,
   });

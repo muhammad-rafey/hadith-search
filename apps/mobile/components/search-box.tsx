@@ -53,7 +53,7 @@ export function SearchBox({
         accessibilityLabel="Search hadiths"
         accessibilityState={{ busy: !!loading }}
         placeholder={placeholder}
-        className="h-11 pl-10 pr-10 text-base"
+        className="h-12 pl-10 pr-10 text-base"
       />
       <View className="absolute right-3 z-10">
         {loading ? (
