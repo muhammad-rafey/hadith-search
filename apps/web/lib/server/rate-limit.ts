@@ -1,5 +1,7 @@
 import "server-only";
 
+import { numEnv } from "./env";
+
 /**
  * In-memory per-IP token bucket. Per Vercel isolate, so total throughput scales
  * with isolate count — fine for a v1. Replace with Upstash Redis when we need
@@ -17,9 +19,9 @@ import "server-only";
 
 type Bucket = { tokens: number; lastRefill: number };
 
-const RATE_PER_SECOND = Number(process.env.RATE_LIMIT_PER_SEC ?? 10);
-const BURST = Number(process.env.RATE_LIMIT_BURST ?? 30);
-const BUCKETS_MAX = Number(process.env.RATE_LIMIT_BUCKETS_MAX ?? 10_000);
+const RATE_PER_SECOND = numEnv("RATE_LIMIT_PER_SEC", 10, { min: 0.01 });
+const BURST = numEnv("RATE_LIMIT_BURST", 30, { min: 1, int: true });
+const BUCKETS_MAX = numEnv("RATE_LIMIT_BUCKETS_MAX", 10_000, { min: 1, int: true });
 const TRUST_XFF = process.env.TRUSTED_PROXY === "true";
 
 // Map iteration order is insertion order; we reinsert on touch to get LRU.

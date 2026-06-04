@@ -24,21 +24,11 @@ export function ResultList({
   queryHash,
   onResultClick,
 }: ResultListProps) {
-  // The live region is always mounted so screen-readers pick up transitions
-  // between states without needing to re-announce the element's existence.
-  const liveMessage = loading
-    ? "Searching…"
-    : results.length > 0
-      ? `${results.length} result${results.length === 1 ? "" : "s"}.`
-      : "";
-
+  // NOTE: the authoritative aria-live status region lives in the search page
+  // (search/page.tsx) — having a second one here double-announced every search
+  // to screen readers, so this component no longer renders its own.
   return (
     <>
-      {/* Always-present polite live region for result-count / loading announcements */}
-      <output className="sr-only" aria-live="polite">
-        {liveMessage}
-      </output>
-
       {loading && (
         <div className="space-y-3" aria-busy="true" aria-label="Loading results">
           {[0, 1, 2].map((i) => (
@@ -57,7 +47,10 @@ export function ResultList({
           className="rounded-md border border-[hsl(var(--destructive))] bg-[hsl(var(--destructive))]/10 p-4 text-sm"
         >
           <p className="font-medium">Search failed.</p>
-          <p className="mt-1 text-[hsl(var(--muted-foreground))]">{error.message}</p>
+          <p className="mt-1 text-[hsl(var(--muted-foreground))]">
+            Something went wrong. Please try again.
+            {process.env.NODE_ENV === "development" ? ` (${error.message})` : ""}
+          </p>
         </div>
       )}
 
@@ -71,7 +64,7 @@ export function ResultList({
 
       {!loading && !error && hasQuery && results.length === 0 && (
         <p className="rounded-md border border-dashed border-[hsl(var(--border))] p-6 text-center text-sm text-[hsl(var(--muted-foreground))]">
-          No matches. Try different words or remove a filter.
+          No matches. Try different words or a different phrasing.
         </p>
       )}
 

@@ -12,7 +12,16 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const rl = checkRateLimit(clientKeyFromRequest(req));
   if (!rl.allowed) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": Math.ceil(rl.retryAfterMs / 1000).toString() } },
+    );
+  }
+
+  // Feedback records are tiny; reject oversize payloads before parsing JSON.
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > 8_000) {
+    return NextResponse.json({ error: "request_too_large" }, { status: 413 });
   }
 
   let body: unknown;

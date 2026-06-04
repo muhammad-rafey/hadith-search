@@ -13,6 +13,7 @@ import {
   parseHadithId,
 } from "@hadith/shared-types";
 
+import { numEnv } from "@/lib/server/env";
 import { getSupabaseAdmin } from "@/lib/server/supabase-admin";
 
 /**
@@ -33,7 +34,7 @@ export interface BookSummary {
 // unreachable DB during a CI build with placeholder Supabase env. A real prod
 // read returns in well under this; on timeout the helpers below catch the abort
 // and return empty, so the page prerenders blank and revalidates later.
-const RPC_TIMEOUT_MS = Number(process.env.BUILD_RPC_TIMEOUT_MS ?? 15000);
+const RPC_TIMEOUT_MS = numEnv("BUILD_RPC_TIMEOUT_MS", 15000, { min: 1 });
 
 /**
  * Offline / placeholder fallback. When `NEXT_PUBLIC_SUPABASE_URL` is unset or
