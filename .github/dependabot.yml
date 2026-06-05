@@ -3,11 +3,13 @@
 version: 2
 updates:
   - package-ecosystem: "npm"
-    directories:
-      - "/"
-      - "/apps/web"
-      - "/apps/mobile"
-      - "/packages/shared-types"
+    # Single root entry on purpose: this is a pnpm workspace with ONE lockfile
+    # at the repo root. From "/", Dependabot is workspace-aware — it bumps every
+    # workspace package's package.json AND regenerates the root pnpm-lock.yaml in
+    # one PR. Listing the sub-package dirs (apps/*, packages/*) separately made
+    # Dependabot emit manifest-only PRs that left the root lockfile stale, so
+    # `pnpm install --frozen-lockfile` (Vercel + CI default) failed on every one.
+    directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
