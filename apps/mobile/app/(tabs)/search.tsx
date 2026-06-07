@@ -37,6 +37,10 @@ export default function SearchScreen() {
 
   const lastQuery = useUiStore((s) => s.lastQuery);
   const setLastQuery = useUiStore((s) => s.setLastQuery);
+  // Subscribe so a Private-mode toggle re-issues with skip_cache. Keeps the
+  // search request's cache mode aligned with useAnswer (which also forwards it),
+  // so the answer can't ground on uncached retrieval while the list is cached.
+  const privateMode = useUiStore((s) => s.privateMode);
 
   const [query, setQuery] = React.useState(lastQuery);
   const [debounced, setDebounced] = React.useState(lastQuery);
@@ -76,6 +80,7 @@ export default function SearchScreen() {
         query: trimmed,
         language: "en",
         topK: 10,
+        skip_cache: privateMode,
       };
 
       let cancelled = false;
@@ -130,7 +135,7 @@ export default function SearchScreen() {
         cancelled = true;
       };
     },
-    [mutateAsync, answerMutateAsync, setLastQuery],
+    [mutateAsync, answerMutateAsync, privateMode, setLastQuery],
   );
 
   // Fire whenever the debounced query changes (same deps as web).

@@ -75,7 +75,10 @@ export async function generateAnswer(
   const topK = req.topK ?? MAX_ANSWER_DOCS;
   const useCache = !req.skip_cache;
 
-  const cacheKey = sha256Hex(canonicalKey({ language, query: req.query }));
+  // Fold topK into the key — canonicalKey ignores unknown fields, so two
+  // requests that differ only by retrieval window would otherwise collide and
+  // serve an answer grounded in a different-sized pool.
+  const cacheKey = sha256Hex(`${canonicalKey({ language, query: req.query })}|${topK}`);
   if (useCache) {
     const cached = lru.get(cacheKey);
     if (cached) return { ...cached, latency_ms: Date.now() - start };
@@ -130,7 +133,13 @@ export async function generateAnswer(
     return degraded(DEGRADED_MESSAGE, start);
   }
 
+  // Never present an answer we can't tie back to specific hadiths. If the model
+  // cited nothing (or only unmappable ids), abstain rather than claim a grounded
+  // answer — consistent with the abstain-on-weak-retrieval policy above.
   const citations = mapCitations(generated.citedIds, docResults);
+  if (citations.length === 0) {
+    return abstain(ABSTAIN_MESSAGE, start);
+  }
   const response: AnswerResponse = {
     answer: generated.text,
     status: "answered",
@@ -147,8 +156,10 @@ function mapCitations(citedIds: string[], docResults: SearchResult[]): AnswerCit
   const citations: AnswerCitation[] = [];
   const seen = new Set<string>();
   for (const id of citedIds) {
-    const idx = Number.parseInt(id, 10);
-    if (!Number.isInteger(idx)) continue;
+    // Strict digits only — Number.parseInt("1x") would coerce to 1 and cite the
+    // wrong hadith. The id is always the array-index string we assigned.
+    if (!/^\d+$/.test(id)) continue;
+    const idx = Number(id);
     const r = docResults[idx];
     if (!r || seen.has(r.id)) continue;
     seen.add(r.id);
