@@ -19,7 +19,7 @@ export function getPostHog(): PostHog | undefined {
     posthog = new PostHog(ENV.POSTHOG_KEY, {
       host: ENV.POSTHOG_HOST,
       // We fire an explicit taxonomy — disable auto lifecycle noise.
-      captureNativeAppLifecycleEvents: false,
+      captureAppLifecycleEvents: false,
     });
   }
   return posthog;
