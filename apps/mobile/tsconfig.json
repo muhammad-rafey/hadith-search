@@ -7,7 +7,6 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
       "@hadith/shared-types": ["../../packages/shared-types/src/index.ts"]

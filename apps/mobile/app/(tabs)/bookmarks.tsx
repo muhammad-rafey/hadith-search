@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import * as React from "react";
 import { ActivityIndicator, FlatList, View } from "react-native";
-import { Swipeable } from "react-native-gesture-handler";
+import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { useQuery } from "@tanstack/react-query";
 import { collectionName, type Hadith } from "@hadith/shared-types";
 import { EmptyState } from "@/components/empty-state";
@@ -75,7 +75,7 @@ export default function BookmarksScreen() {
         renderItem={({ item: h }) => {
           const label = `${collectionName(h.collection)} ${h.hadith_number_label}`;
           return (
-            <Swipeable
+            <ReanimatedSwipeable
               renderRightActions={() => (
                 <Pressable
                   onPress={() => remove(h.id)}
@@ -126,7 +126,7 @@ export default function BookmarksScreen() {
                   </CardContent>
                 </Card>
               </Pressable>
-            </Swipeable>
+            </ReanimatedSwipeable>
           );
         }}
       />
