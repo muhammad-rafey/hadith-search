@@ -48,6 +48,57 @@ export const SearchResponseSchema = z.object({
 export type SearchResponse = z.infer<typeof SearchResponseSchema>;
 
 /**
+ * RAG answer request/response — the contract for the grounded-answer endpoint
+ * (`/api/answer`), shared between the BFF and both clients. The endpoint
+ * re-runs the search pipeline internally from `query`, so the client only
+ * sends the question (not the retrieved hadiths) and the answer is always
+ * grounded in the same results the search response returns.
+ */
+export const AnswerRequestSchema = z.object({
+  query: z.string().min(1).max(500),
+  language: LanguageSchema.default("en"),
+  /** How many top hadiths to ground the answer in. */
+  topK: z.number().int().min(1).max(20).default(8),
+  /** When true, skip the answer + search cache read/write (Private mode). */
+  skip_cache: z.boolean().optional(),
+});
+export type AnswerRequest = z.infer<typeof AnswerRequestSchema>;
+
+/**
+ * - `answered`  — the model produced a grounded answer with citations.
+ * - `abstained` — retrieval found nothing strong enough, or generation is
+ *   unavailable/disabled; `answer` carries a plain "couldn't find" message and
+ *   `citations` is empty. NEVER a fabricated answer.
+ * - `degraded`  — retrieval/generation was unreliable (provider outage, embed
+ *   fallback); treated like an abstention so we never synthesize over bad data.
+ */
+export const AnswerStatusSchema = z.enum(["answered", "abstained", "degraded"]);
+export type AnswerStatus = z.infer<typeof AnswerStatusSchema>;
+
+/**
+ * A hadith the answer drew on. `hadith_id` joins back to a `SearchResult.id`
+ * so the UI can label and link the cited hadith in the results list below.
+ */
+export const AnswerCitationSchema = z.object({
+  hadith_id: z.string(),
+  hadith_number_label: z.string(),
+  in_book_ref: z.string(),
+  collection: z.string(),
+});
+export type AnswerCitation = z.infer<typeof AnswerCitationSchema>;
+
+export const AnswerResponseSchema = z.object({
+  answer: z.string(),
+  status: AnswerStatusSchema,
+  citations: z.array(AnswerCitationSchema),
+  /** Generation model id used, or "" when abstained without calling a model. */
+  model: z.string(),
+  latency_ms: z.number().int().nonnegative(),
+  degraded: z.boolean().optional(),
+});
+export type AnswerResponse = z.infer<typeof AnswerResponseSchema>;
+
+/**
  * Richer hadith record used by the detail / browse pages. Produced by
  * mapRowToHadith from a `hadith_table` RPC row (see map.ts). `text_en` and
  * `text_en_full` are both narrator-prefix-stripped; the narrator is carried
