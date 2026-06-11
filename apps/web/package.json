@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@hadith/shared-types": "workspace:*",
-    "@hookform/resolvers": "^3.9.1",
+    "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-scroll-area": "^1.2.11",
     "@radix-ui/react-slot": "^1.2.5",
     "@radix-ui/react-tabs": "^1.1.14",
