@@ -14,10 +14,18 @@
     "lint": "pnpm -r --parallel lint",
     "typecheck": "pnpm -r --parallel typecheck",
     "format": "biome format --write .",
-    "format:check": "biome format ."
+    "format:check": "biome format .",
+    "scrape": "node --env-file-if-exists=.env.local scraper/scrape.mjs",
+    "populate-urdu": "node --env-file-if-exists=.env.local scraper/populate_urdu.mjs",
+    "urdu-mismatches": "node --env-file-if-exists=.env.local scraper/dump_mismatches.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "cheerio": "^1.0.0",
+    "csv-parse": "^6.2.1",
+    "csv-stringify": "^6.5.2",
+    "p-limit": "^6.1.0",
+    "pg": "^8.13.1",
     "typescript": "^6.0.3"
   },
   "pnpm": {

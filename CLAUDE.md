@@ -10,7 +10,7 @@ Semantic search over Sahih al-Bukhari (English + Arabic). Hybrid retrieval (BM25
 
 ## Monorepo layout
 
-pnpm workspaces, defined in `pnpm-workspace.yaml` as `apps/*` + `packages/*`. Note `supabase/` and `scripts/` are **not** workspace packages — they run via the Supabase CLI / node / python directly.
+pnpm workspaces, defined in `pnpm-workspace.yaml` as `apps/*` + `packages/*`. Note `supabase/`, `scripts/`, and `scraper/` are **not** workspace packages — they run via the Supabase CLI / node / python directly (deps for the scraper live in the **root** `package.json`).
 
 ```
 apps/web/          Next.js 16 App Router. Hosts the UI AND the shared HTTP API (BFF).
@@ -18,8 +18,11 @@ apps/mobile/       Expo SDK 54 / RN 0.81 / expo-router. Talks to the web app's /
 packages/shared-types/   Zod schemas + row-mapping/text-cleaning utils. The web/API contract.
 supabase/          Postgres 15 + pgvector schema (migrations, RPCs) + local-dev seed.
 scripts/           One-shot data-ingestion tooling (dump → SQL → DB).
+scraper/           sunnah.com Urdu scraper → CSV → Arabic-verified DB populate.
 plan/              Architecture rationale & roadmap (living docs, partly aspirational).
 ```
+
+The scraper (`pnpm scrape` → `scraper/out/sunnah_urdu.csv`, then `pnpm populate-urdu` to UPSERT `"urduText"`/`"urduSanad"` onto Arabic-matched rows; `pnpm urdu-mismatches` dumps a diff report). All need `DATABASE_URL` in `.env.local`. `scraper/out/` is git-ignored.
 
 ## The one architecture fact that matters most
 
