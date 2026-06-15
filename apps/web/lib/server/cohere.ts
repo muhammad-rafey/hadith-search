@@ -342,6 +342,100 @@ async function bgeRerank(
   }
 }
 
+// ── Grounded generation (RAG answer synthesis) ──────────────────────────────
+
+/** One retrieved hadith handed to the model as a grounding document. `id` must
+ *  round-trip back through the citations so the caller can map a cited source
+ *  to its SearchResult. */
+export type GroundedDocument = { id: string; text: string };
+
+export type GroundedAnswer = {
+  /** The model's answer text (concatenated text blocks). */
+  text: string;
+  /** Distinct document ids the model cited, in first-seen order. */
+  citedIds: string[];
+};
+
+/**
+ * Generate a grounded answer with Cohere's v2 Chat RAG mode. `documents` are
+ * passed as structured grounding sources; Cohere returns inline `citations`
+ * whose `sources[].id` reference our document ids, which we collect so the
+ * caller can map them back to the originating hadith.
+ *
+ * Returns `null` on any failure (no API key, timeout, empty/blank output) so
+ * the caller degrades to an explicit abstention rather than surfacing an error.
+ */
+export async function cohereGenerateGrounded(opts: {
+  system: string;
+  query: string;
+  documents: GroundedDocument[];
+  model: string;
+  timeoutMs: number;
+}): Promise<GroundedAnswer | null> {
+  const client = getClientV2();
+  if (!client) return null;
+  const abort = withAbortTimeout(opts.timeoutMs);
+  try {
+    const res = await client.chat(
+      {
+        model: opts.model,
+        messages: [
+          { role: "system", content: opts.system },
+          { role: "user", content: opts.query },
+        ],
+        // v2 RAG: each document is { id, data: { text } }. The id round-trips
+        // through citations[].sources[].id.
+        documents: opts.documents.map((d) => ({
+          id: d.id,
+          data: { text: d.text.slice(0, 4000) },
+        })),
+      },
+      { abortSignal: abort.signal },
+    );
+    const text = extractChatText(res).trim();
+    if (!text) return null;
+    return { text, citedIds: extractCitedIds(res) };
+  } catch {
+    return null;
+  } finally {
+    abort.clear();
+  }
+}
+
+/** Cohere v2 chat returns `message.content` as an array of typed blocks; join
+ *  the text ones. Defensive against shape drift (returns "" on anything odd). */
+function extractChatText(res: unknown): string {
+  const content = (res as { message?: { content?: unknown } }).message?.content;
+  if (!Array.isArray(content)) return "";
+  const parts: string[] = [];
+  for (const block of content) {
+    const b = block as { type?: string; text?: unknown };
+    if (b.type === "text" && typeof b.text === "string") parts.push(b.text);
+  }
+  return parts.join("");
+}
+
+/** Collect distinct cited document ids from `message.citations[].sources[].id`,
+ *  preserving first-seen order. */
+function extractCitedIds(res: unknown): string[] {
+  const citations = (res as { message?: { citations?: unknown } }).message?.citations;
+  if (!Array.isArray(citations)) return [];
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const c of citations) {
+    const sources = (c as { sources?: unknown }).sources;
+    if (!Array.isArray(sources)) continue;
+    for (const s of sources) {
+      const id = (s as { id?: unknown }).id;
+      if (typeof id === "string" && id && !seen.has(id)) {
+        seen.add(id);
+        ids.push(id);
+      }
+    }
+  }
+  return ids;
+}
+
 function identityRerank(n: number, topK: number, degraded: boolean): RerankResult {
   const len = Math.min(n, topK);
   return {
