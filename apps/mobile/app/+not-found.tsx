@@ -1,5 +1,4 @@
 import { Stack, useRouter } from "expo-router";
-import * as React from "react";
 import { View } from "react-native";
 import { EmptyState } from "@/components/empty-state";
 import { StatusBarStrip } from "@/components/status-bar-strip";

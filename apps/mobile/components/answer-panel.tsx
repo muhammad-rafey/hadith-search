@@ -56,9 +56,9 @@ function AnswerPanelImpl({ answer, loading, onCitationPress }: AnswerPanelProps)
                 Based on
               </Text>
               <View className="flex-row flex-wrap gap-1.5">
-                {answer.citations.map((c: AnswerCitation, index: number) => (
+                {answer.citations.map((c: AnswerCitation) => (
                   <Pressable
-                    key={`${c.hadith_id}-${index}`}
+                    key={c.hadith_id}
                     haptic={false}
                     onPress={() => onCitationPress(c.hadith_id)}
                     accessibilityRole="button"

@@ -1,5 +1,4 @@
 import { Bookmark, BookmarkCheck } from "lucide-react-native";
-import * as React from "react";
 import { Icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";

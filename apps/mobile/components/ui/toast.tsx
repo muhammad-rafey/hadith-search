@@ -55,13 +55,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ToastViewport({
-  toasts,
-  onDone,
-}: {
-  toasts: ToastItem[];
-  onDone: (id: number) => void;
-}) {
+function ToastViewport({ toasts, onDone }: { toasts: ToastItem[]; onDone: (id: number) => void }) {
   const insets = useSafeAreaInsets();
   if (toasts.length === 0) return null;
   return (

@@ -1,7 +1,6 @@
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
-import * as React from "react";
 import { ActivityIndicator, FlatList, View } from "react-native";
 import { EmptyState } from "@/components/empty-state";
 import { Icon } from "@/components/icon";

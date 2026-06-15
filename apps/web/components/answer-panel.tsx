@@ -37,7 +37,7 @@ export function AnswerPanel({ answer, loading, hidden }: AnswerPanelProps) {
       </h2>
 
       {loading ? (
-        <div className="mt-3 space-y-2" aria-label="Generating answer">
+        <div className="mt-3 space-y-2" role="status" aria-label="Generating answer">
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-11/12" />
           <Skeleton className="h-4 w-2/3" />
@@ -58,9 +58,9 @@ export function AnswerPanel({ answer, loading, hidden }: AnswerPanelProps) {
             <div className="mt-3">
               <p className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Based on</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {answer.citations.map((c, index) => (
+                {answer.citations.map((c) => (
                   <Link
-                    key={`${c.hadith_id}-${index}`}
+                    key={c.hadith_id}
                     href={`/hadith/${c.hadith_id}`}
                     className="inline-flex items-center rounded-full border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-2.5 py-0.5 text-xs font-medium text-[hsl(var(--foreground))] hover:border-[hsl(var(--primary))] hover:text-[hsl(var(--primary))]"
                   >

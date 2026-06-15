@@ -69,7 +69,7 @@ export function collectionArabicName(slug: string): string | null {
 
 /** True for the 15 curated collections (used to validate route params). */
 export function isKnownCollection(slug: string): boolean {
-  return Object.prototype.hasOwnProperty.call(NAMES, slug);
+  return Object.hasOwn(NAMES, slug);
 }
 
 export function collectionMeta(slug: string): CollectionMeta {

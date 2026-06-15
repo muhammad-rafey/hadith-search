@@ -1,5 +1,4 @@
 import { Stack } from "expo-router";
-import * as React from "react";
 import { useTheme } from "@/components/theme-provider";
 import { hsl } from "@/lib/tokens";
 

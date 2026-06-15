@@ -1,6 +1,5 @@
 import { Tabs } from "expo-router";
 import { Bookmark, BookOpen, Search, Settings } from "lucide-react-native";
-import * as React from "react";
 import { useTheme } from "@/components/theme-provider";
 import { hsl } from "@/lib/tokens";
 

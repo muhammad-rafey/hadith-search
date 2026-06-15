@@ -1,6 +1,5 @@
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import Constants from "expo-constants";
-import * as React from "react";
 import { ScrollView, View } from "react-native";
 import { StatusBarStrip } from "@/components/status-bar-strip";
 import { useTheme } from "@/components/theme-provider";

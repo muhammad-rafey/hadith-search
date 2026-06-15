@@ -15,13 +15,7 @@ import { ENV } from "@/lib/env";
  * (method: "native" | "link"). Cancelling the sheet is silent
  * (plan edge case #17).
  */
-export function ShareButton({
-  hadithId,
-  title,
-}: {
-  hadithId: string;
-  title?: string;
-}) {
+export function ShareButton({ hadithId, title }: { hadithId: string; title?: string }) {
   const { notify } = useToast();
   const [copied, setCopied] = React.useState(false);
   const copiedTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
