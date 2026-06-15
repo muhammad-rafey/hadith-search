@@ -8,7 +8,7 @@ import type { FontSizeStep } from "@/lib/themes";
  * showArabic in raw localStorage keys; mobile centralizes them here so
  * screens can subscribe without useEffect hydration dances.
  *
- * Persisted: privateMode, fontSize, showArabic (durable user choices).
+ * Persisted: privateMode, fontSize, showArabic, showUrdu (durable user choices).
  * lastQuery stays in-memory only — persisting it would auto-fire a search on
  * cold start, which we don't want.
  */
@@ -24,6 +24,9 @@ interface UiState {
 
   showArabic: boolean;
   setShowArabic: (v: boolean) => void;
+
+  showUrdu: boolean;
+  setShowUrdu: (v: boolean) => void;
 
   hydrated: boolean;
   setHydrated: (v: boolean) => void;
@@ -44,6 +47,9 @@ export const useUiStore = create<UiState>()(
       showArabic: true,
       setShowArabic: (v) => set({ showArabic: v }),
 
+      showUrdu: true,
+      setShowUrdu: (v) => set({ showUrdu: v }),
+
       hydrated: false,
       setHydrated: (v) => set({ hydrated: v }),
     }),
@@ -54,6 +60,7 @@ export const useUiStore = create<UiState>()(
         privateMode: state.privateMode,
         fontSize: state.fontSize,
         showArabic: state.showArabic,
+        showUrdu: state.showUrdu,
       }),
       // (state, error): on a read failure `state` is undefined — still flip
       // `hydrated` via the store ref so consumers don't wait forever.

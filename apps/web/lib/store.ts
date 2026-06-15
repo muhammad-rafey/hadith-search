@@ -17,6 +17,11 @@ interface UiState {
   // Written by Settings; read by <ArabicSection> — single source of truth.
   showArabic: boolean;
   setShowArabic: (v: boolean) => void;
+
+  // Same contract as showArabic, for the Urdu translation block.
+  // Read by <UrduSection>, written by Settings.
+  showUrdu: boolean;
+  setShowUrdu: (v: boolean) => void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -28,6 +33,8 @@ export const useUiStore = create<UiState>()(
       setPrivateMode: (v) => set({ privateMode: v }),
       showArabic: true,
       setShowArabic: (v) => set({ showArabic: v }),
+      showUrdu: true,
+      setShowUrdu: (v) => set({ showUrdu: v }),
     }),
     {
       name: "hadith-search:ui",
@@ -38,18 +45,20 @@ export const useUiStore = create<UiState>()(
       partialize: (state) => ({
         privateMode: state.privateMode,
         showArabic: state.showArabic,
+        showUrdu: state.showUrdu,
       }),
-      version: 1,
+      version: 2,
       // Pre-v1 builds persisted this store with no version field — Zustand reads
       // that back as version 0, and without a migrate it logs "State loaded from
-      // storage couldn't be migrated…". The old shape predates showArabic, so
-      // carry the stored prefs forward; new keys fall back to their defaults.
+      // storage couldn't be migrated…". v1 added showArabic; v2 adds showUrdu.
+      // Carry the stored prefs forward; new keys fall back to their defaults.
       // persist re-saves at the current version after this runs, so it self-heals.
       migrate: (persisted) => {
         const prev = persisted as Partial<UiState> | null | undefined;
         return {
           privateMode: prev?.privateMode ?? false,
           showArabic: prev?.showArabic ?? true,
+          showUrdu: prev?.showUrdu ?? true,
         } as UiState;
       },
     },

@@ -147,6 +147,38 @@ export function cleanEnglishText(raw: string | null | undefined): string {
     .trim();
 }
 
+// ── Urdu ──────────────────────────────────────────────────────────────────
+
+/**
+ * Clean the scraped Urdu translation (`urduText` / `urduSanad`). The source is
+ * sunnah.com's lazy-loaded Urdu JSON, which can carry HTML tags + entities and
+ * occasionally the same [narrator]/[prematn]/[matn] section markup the Arabic
+ * uses. Strip all of that, decode entities, drop bidi-control characters (they
+ * break copy/paste alignment in RTL), and normalize whitespace — leaving
+ * legible Urdu (Arabic-script letters + diacritics preserved). Mirrors the
+ * Arabic + English cleaners; no narrator-prefix logic (Urdu carries its isnad
+ * in a separate `urduSanad` field, not an inline "Narrated X:" prefix).
+ */
+export function cleanUrduText(raw: string | null | undefined): string {
+  if (!raw) return "";
+  return decodeEntities(
+    raw
+      .replace(ARABIC_NARRATOR_OPEN_RE, "")
+      .replace(ARABIC_NARRATOR_CLOSE_RE, "")
+      .replace(ARABIC_SECTION_TAG_RE, "")
+      .replace(HTML_P_RE, "\n")
+      .replace(HTML_BR_RE, "\n")
+      .replace(HTML_ANY_TAG_RE, ""),
+  )
+    .replace(ARABIC_BIDI_CONTROL_RE, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\s*\n\s*/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+// ── Narrator extraction (English) ────────────────────────────────────────────
+
 // `?[`'‘’ʻʼ]?` accepts ASCII backtick/quote and the common
 // Unicode left/right single quotes plus the `ʻ`/`ʼ` modifier-letter apostrophes
 // used in Arabic-name transliterations (`Aisha, ʻUmar, etc.).

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { collectionName } from "./collections";
 import {
   cleanArabicText,
+  cleanUrduText,
   extractNarratorFromEnglish,
   normalizeNarrator,
   stripNarratorPrefix,
@@ -27,6 +28,12 @@ export const HadithRowSchema = z.object({
   arabic_text: z.string().nullable(),
   english_grade: z.string().nullable(),
   arabic_grade: z.string().nullable(),
+  // `.nullish()` (nullable + optional), NOT required: the Urdu columns are
+  // projected by 0017's RPCs, but a pre-0017 deploy returns rows without these
+  // keys — keeping them optional means the row still parses (Urdu just absent)
+  // instead of dropping every result until the migration lands.
+  urdu_text: z.string().nullish(),
+  urdu_sanad: z.string().nullish(),
   score: z.number().optional(),
 });
 export type HadithRow = z.infer<typeof HadithRowSchema>;
@@ -47,6 +54,9 @@ export const BukhariRpcRowSchema = z.object({
   arabic_text: z.string().nullable(),
   english_grade: z.string().nullable(),
   arabic_grade: z.string().nullable(),
+  // Optional for the same pre-0017 deploy safety as HadithRowSchema above.
+  urdu_text: z.string().nullish(),
+  urdu_sanad: z.string().nullish(),
   score: z.number().optional(),
 });
 export type BukhariRpcRow = z.infer<typeof BukhariRpcRowSchema>;
@@ -149,6 +159,21 @@ function inBookRef(bookLabel: string | null, seq: number): string {
 const clamp01 = (n: number): number => Math.max(0, Math.min(1, n));
 
 /**
+ * Build the display Urdu block from the two scraped columns: the isnad
+ * (`urduSanad`) first, then the matn (`urduText`), each cleaned and joined by a
+ * blank line — mirroring how the full Arabic (isnad + matn) renders as one
+ * section. Returns null when neither column has content (so a row with no Urdu
+ * translation cleanly hides the Urdu UI).
+ */
+function combineUrdu(
+  sanad: string | null | undefined,
+  text: string | null | undefined,
+): string | null {
+  const parts = [cleanUrduText(sanad), cleanUrduText(text)].filter((p) => p.length > 0);
+  return parts.length > 0 ? parts.join("\n\n") : null;
+}
+
+/**
  * Map a generic collection RPC row to the SearchResult contract. Cleans markup,
  * extracts the narrator, and synthesizes the reference labels.
  */
@@ -172,6 +197,7 @@ export function mapSearchRow(row: HadithRow): SearchResult {
     narrator,
     text_en_full: stripNarratorPrefix(row.english_text),
     text_ar: cleanedAr || null,
+    text_ur: combineUrdu(row.urdu_sanad, row.urdu_text),
     ...(typeof row.score === "number" ? { relevance: clamp01(row.score) } : {}),
   };
 }
@@ -219,6 +245,7 @@ export function mapHadithRow(row: HadithRow): Hadith {
     text_en: bodyEn,
     text_en_full: bodyEn,
     text_ar: cleanedAr || null,
+    text_ur: combineUrdu(row.urdu_sanad, row.urdu_text),
     grades: grades.length > 0 ? grades : null,
     urn: row.arabic_urn,
     language: "en",
@@ -239,6 +266,8 @@ function bukhariRowToGeneric(row: BukhariRpcRow): HadithRow {
     arabic_text: row.arabic_text,
     english_grade: row.english_grade,
     arabic_grade: row.arabic_grade,
+    urdu_text: row.urdu_text,
+    urdu_sanad: row.urdu_sanad,
     ...(row.score !== undefined ? { score: row.score } : {}),
   };
 }

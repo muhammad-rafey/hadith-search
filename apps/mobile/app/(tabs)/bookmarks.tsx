@@ -106,10 +106,25 @@ export default function BookmarksScreen() {
                     </Text>
                   </CardHeader>
                   <CardContent className="flex-row items-start justify-between gap-3">
-                    <View className="flex-1">
+                    <View className="flex-1 gap-1">
                       <Text size="sm" numberOfLines={2} className="text-muted-foreground">
                         {h.text_en}
                       </Text>
+                      {h.text_ur ? (
+                        <Text
+                          size="sm"
+                          numberOfLines={2}
+                          accessibilityLanguage="ur"
+                          className="text-muted-foreground"
+                          style={{
+                            writingDirection: "rtl",
+                            textAlign: "right",
+                            fontFamily: "Amiri-Regular",
+                          }}
+                        >
+                          {h.text_ur}
+                        </Text>
+                      ) : null}
                     </View>
                     <Pressable
                       onPress={() => remove(h.id)}

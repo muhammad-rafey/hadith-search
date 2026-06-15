@@ -17,6 +17,9 @@ export default function SettingsPage() {
   const showArabic = useUiStore((s) => s.showArabic);
   const setShowArabic = useUiStore((s) => s.setShowArabic);
 
+  const showUrdu = useUiStore((s) => s.showUrdu);
+  const setShowUrdu = useUiStore((s) => s.setShowUrdu);
+
   const privateMode = useUiStore((s) => s.privateMode);
   const setPrivateMode = useUiStore((s) => s.setPrivateMode);
 
@@ -29,6 +32,10 @@ export default function SettingsPage() {
 
   const onArabicToggle = () => {
     setShowArabic(!showArabic);
+  };
+
+  const onUrduToggle = () => {
+    setShowUrdu(!showUrdu);
   };
 
   const onPrivateToggle = () => {
@@ -94,6 +101,25 @@ export default function SettingsPage() {
             onClick={onArabicToggle}
           >
             {showArabic ? "On" : "Off"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Display Urdu by default</CardTitle>
+          <CardDescription>
+            Show the Urdu translation on hadith detail pages without an extra click.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            type="button"
+            variant={showUrdu ? "default" : "outline"}
+            aria-pressed={showUrdu}
+            onClick={onUrduToggle}
+          >
+            {showUrdu ? "On" : "Off"}
           </Button>
         </CardContent>
       </Card>

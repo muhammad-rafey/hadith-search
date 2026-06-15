@@ -79,6 +79,18 @@ export function CollectionHadithList({ collection, initialHadiths }: CollectionH
                     </p>
                   ) : null}
                   <p className="mt-1 line-clamp-2 text-sm">{h.text_en}</p>
+                  {h.text_ur ? (
+                    <p
+                      dir="rtl"
+                      lang="ur"
+                      style={{
+                        fontFamily: "var(--font-urdu), 'Noto Nastaliq Urdu', 'Amiri', serif",
+                      }}
+                      className="mt-1 line-clamp-2 text-sm leading-loose text-[hsl(var(--muted-foreground))]"
+                    >
+                      {h.text_ur}
+                    </p>
+                  ) : null}
                 </CardContent>
               </Card>
             </Link>

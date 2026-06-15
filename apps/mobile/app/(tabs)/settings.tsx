@@ -24,6 +24,8 @@ export default function SettingsScreen() {
   const setFontSize = useUiStore((s) => s.setFontSize);
   const showArabic = useUiStore((s) => s.showArabic);
   const setShowArabic = useUiStore((s) => s.setShowArabic);
+  const showUrdu = useUiStore((s) => s.showUrdu);
+  const setShowUrdu = useUiStore((s) => s.setShowUrdu);
   const privateMode = useUiStore((s) => s.privateMode);
   const setPrivateMode = useUiStore((s) => s.setPrivateMode);
 
@@ -107,6 +109,24 @@ export default function SettingsScreen() {
               onPress={() => setShowArabic(!showArabic)}
             >
               {showArabic ? "On" : "Off"}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Display Urdu by default</CardTitle>
+            <CardDescription>
+              Show the Urdu translation on hadith pages without an extra tap.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant={showUrdu ? "default" : "outline"}
+              accessibilityState={{ selected: showUrdu }}
+              onPress={() => setShowUrdu(!showUrdu)}
+            >
+              {showUrdu ? "On" : "Off"}
             </Button>
           </CardContent>
         </Card>

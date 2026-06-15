@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Amiri, Inter } from "next/font/google";
+import { Amiri, Inter, Noto_Nastaliq_Urdu } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { getSiteUrl } from "@/lib/site";
 import "./globals.css";
@@ -14,6 +14,16 @@ const amiri = Amiri({
   subsets: ["arabic"],
   weight: ["400", "700"],
   variable: "--font-amiri",
+  display: "swap",
+});
+
+// Nastaliq is the flowing calligraphic style Urdu readers expect (Naskh —
+// Amiri — looks "Arabic" to them). Loaded as a CSS variable consumed by the
+// `.font-urdu` class in globals.css.
+const notoNastaliqUrdu = Noto_Nastaliq_Urdu({
+  subsets: ["arabic"],
+  weight: ["400", "700"],
+  variable: "--font-urdu",
   display: "swap",
 });
 
@@ -48,7 +58,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${amiri.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${amiri.variable} ${notoNastaliqUrdu.variable}`}
+    >
       <body className="min-h-screen font-sans antialiased">
         <a href="#main" className="skip-link">
           Skip to content

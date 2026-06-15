@@ -161,6 +161,17 @@ function HadithRow({ h, onPress }: { h: Hadith; onPress: () => void }) {
           <Text size="sm" numberOfLines={2} className="mt-1">
             {h.text_en}
           </Text>
+          {h.text_ur ? (
+            <Text
+              size="sm"
+              numberOfLines={2}
+              accessibilityLanguage="ur"
+              className="mt-1 text-muted-foreground"
+              style={{ writingDirection: "rtl", textAlign: "right", fontFamily: "Amiri-Regular" }}
+            >
+              {h.text_ur}
+            </Text>
+          ) : null}
         </CardContent>
       </Card>
     </Pressable>
