@@ -34,7 +34,11 @@ function contentSecurityPolicy(): string {
   ]
     .filter(Boolean)
     .join(" ");
-  const scriptSrc = ["'self'", "'unsafe-inline'", posthog, "https://*.posthog.com"]
+  // React's development build (and Turbopack's dev runtime) require eval() for
+  // debugging features like reconstructing callstacks. Production never uses it,
+  // so 'unsafe-eval' is scoped to dev only to keep the prod CSP tight.
+  const devEval = process.env.NODE_ENV !== "production" ? ["'unsafe-eval'"] : [];
+  const scriptSrc = ["'self'", "'unsafe-inline'", ...devEval, posthog, "https://*.posthog.com"]
     .filter(Boolean)
     .join(" ");
 
