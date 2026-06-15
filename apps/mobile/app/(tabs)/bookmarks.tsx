@@ -9,6 +9,7 @@ import { collectionName, type Hadith } from "@hadith/shared-types";
 import { EmptyState } from "@/components/empty-state";
 import { Icon } from "@/components/icon";
 import { StatusBarStrip } from "@/components/status-bar-strip";
+import { urduSnippetStyle } from "@/components/urdu-section";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
@@ -116,11 +117,7 @@ export default function BookmarksScreen() {
                           numberOfLines={2}
                           accessibilityLanguage="ur"
                           className="text-muted-foreground"
-                          style={{
-                            writingDirection: "rtl",
-                            textAlign: "right",
-                            fontFamily: "Amiri-Regular",
-                          }}
+                          style={urduSnippetStyle}
                         >
                           {h.text_ur}
                         </Text>

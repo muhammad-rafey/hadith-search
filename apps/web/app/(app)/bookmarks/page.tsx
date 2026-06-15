@@ -119,10 +119,7 @@ export default function BookmarksPage() {
                       <p
                         dir="rtl"
                         lang="ur"
-                        style={{
-                          fontFamily: "var(--font-urdu), 'Noto Nastaliq Urdu', 'Amiri', serif",
-                        }}
-                        className="line-clamp-2 text-sm leading-loose text-[hsl(var(--muted-foreground))]"
+                        className="font-urdu-snippet line-clamp-2 text-sm leading-loose text-[hsl(var(--muted-foreground))]"
                       >
                         {h.text_ur}
                       </p>

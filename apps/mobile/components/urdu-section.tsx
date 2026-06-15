@@ -1,5 +1,5 @@
 import * as React from "react";
-import { View } from "react-native";
+import { type TextStyle, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useUiStore } from "@/lib/store/ui-store";
@@ -10,6 +10,18 @@ import { fontSizeMultiplier } from "@/lib/themes";
 // mobile avoids shipping a separate heavy Nastaliq asset.
 const URDU_BASE_FONT = 23;
 const URDU_BASE_LINE_HEIGHT = 46;
+
+/**
+ * RTL + Naskh base style for Urdu text. Shared so the compact snippets on
+ * search/browse/bookmark cards render the same way as this section's body
+ * (which layers font scaling on top) — one place to swap the font if a real
+ * Nastaliq asset is bundled later.
+ */
+export const urduSnippetStyle: TextStyle = {
+  writingDirection: "rtl",
+  textAlign: "right",
+  fontFamily: "Amiri-Regular",
+};
 
 /**
  * Urdu translation body — RTL, larger size, bound to the shared `showUrdu`
@@ -44,9 +56,7 @@ export function UrduSection({ text }: { text: string | null }) {
           <Text
             accessibilityLanguage="ur"
             style={{
-              writingDirection: "rtl",
-              textAlign: "right",
-              fontFamily: "Amiri-Regular",
+              ...urduSnippetStyle,
               fontSize: Math.round(URDU_BASE_FONT * scale),
               lineHeight: Math.round(URDU_BASE_LINE_HEIGHT * scale),
             }}

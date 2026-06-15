@@ -223,8 +223,12 @@ async function scrapeBook(collection, book) {
       // Use the number from the Arabic reference (what sunnah.com displays),
       // not the Urdu JSON's hadithNumber field (often 0, swapped, or missing
       // the merged "272, 273" form). Fall back to the Urdu field if unmatched.
+      // The optional trailing letter captures suffixed numbers ("8a", "35b");
+      // without it the end-anchor failed on those and silently fell back to the
+      // unreliable JSON field. populate_urdu's key() normalizes spaces/case, so
+      // "8a" here still matches a DB "8 a".
       hadithNumber:
-        (ar.reference || "").match(/(\d[\d,\s]*)\s*$/)?.[1].trim() || (h.hadithNumber ?? ""),
+        (ar.reference || "").match(/(\d[\d,\s]*[a-z]?)\s*$/i)?.[1].trim() || (h.hadithNumber ?? ""),
       reference: ar.reference || "",
       inBookReference: ar.inBookReference || "",
       grade: clean(h.grade),

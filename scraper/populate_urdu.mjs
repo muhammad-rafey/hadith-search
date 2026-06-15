@@ -70,8 +70,12 @@ function arabicMatches(csvArabic, dbArabic) {
   return lettersOnly(csvArabic) === lettersOnly(dbArabic);
 }
 
+// Normalize both sides the same way the get_hadith_by_collection_number RPC
+// does (lowercase, strip ALL whitespace) so a scraped "8a" matches a stored
+// "8 a" and "521, 522" matches "521,522". Every write is still gated by the
+// Arabic-text verification below, so a looser key can't mismatch a hadith.
 export const key = (collection, hadithNumber) =>
-  `${(collection || "").trim()} ${(hadithNumber || "").trim()}`;
+  `${(collection || "").trim().toLowerCase()} ${(hadithNumber || "").toLowerCase().replace(/\s+/g, "")}`;
 
 // ---- main routine ----------------------------------------------------------
 export async function populateUrdu({ csvPath = DEFAULT_CSV, databaseUrl } = {}) {

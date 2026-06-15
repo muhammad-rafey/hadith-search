@@ -13,6 +13,7 @@ import { JumpToHadith } from "@/components/jump-to-hadith";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
+import { urduSnippetStyle } from "@/components/urdu-section";
 import { useCollectionHadiths } from "@/lib/queries/use-collections";
 
 /**
@@ -167,7 +168,7 @@ function HadithRow({ h, onPress }: { h: Hadith; onPress: () => void }) {
               numberOfLines={2}
               accessibilityLanguage="ur"
               className="mt-1 text-muted-foreground"
-              style={{ writingDirection: "rtl", textAlign: "right", fontFamily: "Amiri-Regular" }}
+              style={urduSnippetStyle}
             >
               {h.text_ur}
             </Text>

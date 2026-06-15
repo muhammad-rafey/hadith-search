@@ -62,8 +62,7 @@ export function HadithCard({ result, position, queryTokens, queryHash, onClick }
           <p
             dir="rtl"
             lang="ur"
-            style={{ fontFamily: "var(--font-urdu), 'Noto Nastaliq Urdu', 'Amiri', serif" }}
-            className="line-clamp-2 text-sm leading-loose text-[hsl(var(--muted-foreground))]"
+            className="font-urdu-snippet line-clamp-2 text-sm leading-loose text-[hsl(var(--muted-foreground))]"
           >
             {result.text_ur}
           </p>
