@@ -5,7 +5,6 @@ import {
   type PressableProps as RNPressableProps,
   type View,
 } from "react-native";
-import { cn } from "@/lib/utils";
 
 export interface PressableProps extends RNPressableProps {
   className?: string;

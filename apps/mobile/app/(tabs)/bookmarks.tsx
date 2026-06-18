@@ -1,7 +1,6 @@
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import { Trash2 } from "lucide-react-native";
-import * as React from "react";
 import { ActivityIndicator, FlatList, View } from "react-native";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { useQuery } from "@tanstack/react-query";

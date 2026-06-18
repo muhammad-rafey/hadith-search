@@ -3,11 +3,13 @@
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { Info, Compass } from "lucide-react";
-import type { SearchRequest, SearchResult } from "@hadith/shared-types";
+import type { AnswerResponse, SearchRequest, SearchResult } from "@hadith/shared-types";
 import { SearchBox } from "@/components/search-box";
 import { ResultList } from "@/components/result-list";
+import { AnswerPanel } from "@/components/answer-panel";
 import { JumpToHadith } from "@/components/jump-to-hadith";
 import { canonicalKey, useSearch } from "@/lib/queries/use-search";
+import { useAnswer } from "@/lib/queries/use-answer";
 import { useUiStore } from "@/lib/store";
 import {
   searchResultClicked,
@@ -38,7 +40,10 @@ function SearchPageInner() {
   const [query, setQuery] = React.useState(initial);
   const [debounced, setDebounced] = React.useState(initial);
   const search = useSearch();
+  const answer = useAnswer();
   const [results, setResults] = React.useState<SearchResult[]>([]);
+  const [answerData, setAnswerData] = React.useState<AnswerResponse | null>(null);
+  const [answerLoading, setAnswerLoading] = React.useState(false);
   const [hasQuery, setHasQuery] = React.useState(initial.trim().length > 0);
   // Store the query hash that corresponds to the currently displayed results,
   // so click analytics references the actual query hash, not the latest input.
@@ -50,17 +55,23 @@ function SearchPageInner() {
   }, [query]);
 
   const mutateAsync = search.mutateAsync;
+  const answerMutateAsync = answer.mutateAsync;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mutateAsync is stable
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mutateAsync/answerMutateAsync are stable
   React.useEffect(() => {
     const trimmed = debounced.trim();
     if (!trimmed) {
       setResults([]);
+      setAnswerData(null);
+      setAnswerLoading(false);
       setHasQuery(false);
       return;
     }
     setHasQuery(true);
     setLastQuery(trimmed);
+    // Clear any stale answer while the new query resolves.
+    setAnswerData(null);
+    setAnswerLoading(false);
 
     const vars: SearchRequest = {
       query: trimmed,
@@ -96,6 +107,23 @@ function SearchPageInner() {
           latency_ms: data.latency_ms,
           degraded: data.degraded ?? false,
         });
+        // Only synthesize an answer when retrieval produced usable, reliable
+        // results. The endpoint re-runs search (cache hit), so this is cheap.
+        if (data.results.length > 0 && !data.degraded) {
+          setAnswerLoading(true);
+          try {
+            const ans = await answerMutateAsync({
+              query: trimmed,
+              language: vars.language,
+              topK: 8,
+            });
+            if (!cancelled) setAnswerData(ans);
+          } catch {
+            // Answer is best-effort; leave the panel empty on failure.
+          } finally {
+            if (!cancelled) setAnswerLoading(false);
+          }
+        }
       } catch {
         // Error state is rendered by ResultList via search.error below.
       }
@@ -147,6 +175,8 @@ function SearchPageInner() {
       <output aria-live="polite" aria-atomic="true" className="sr-only">
         {statusMessage}
       </output>
+
+      <AnswerPanel answer={answerData} loading={answerLoading} hidden={!hasQuery} />
 
       <ResultList
         results={results}

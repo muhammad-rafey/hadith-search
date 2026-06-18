@@ -30,7 +30,7 @@ export function ResultList({
   return (
     <>
       {loading && (
-        <div className="space-y-3" aria-busy="true" aria-label="Loading results">
+        <div className="space-y-3" aria-hidden="true">
           {[0, 1, 2].map((i) => (
             <div key={i} className="space-y-2 rounded-lg border border-[hsl(var(--border))] p-4">
               <Skeleton className="h-3 w-32" />

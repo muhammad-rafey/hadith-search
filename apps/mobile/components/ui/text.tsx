@@ -1,4 +1,3 @@
-import * as React from "react";
 import { Text as RNText, type TextProps as RNTextProps } from "react-native";
 import { fontSizeMultiplier } from "@/lib/themes";
 import { useUiStore } from "@/lib/store/ui-store";

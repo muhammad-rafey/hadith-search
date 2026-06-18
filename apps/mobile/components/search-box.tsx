@@ -1,5 +1,4 @@
 import { Search, X } from "lucide-react-native";
-import * as React from "react";
 import { ActivityIndicator, View } from "react-native";
 import { Icon } from "@/components/icon";
 import { useTheme } from "@/components/theme-provider";

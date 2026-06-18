@@ -14,13 +14,7 @@ const config: ExpoConfig = {
   scheme: "hadithsearch",
   owner: "slashcommit",
   userInterfaceStyle: "automatic",
-  newArchEnabled: true,
   icon: "./assets/icon.png",
-  splash: {
-    image: "./assets/splash.png",
-    resizeMode: "contain",
-    backgroundColor: "#ffffff",
-  },
   assetBundlePatterns: ["**/*"],
   ios: {
     supportsTablet: true,
