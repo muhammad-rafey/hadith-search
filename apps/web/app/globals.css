@@ -118,6 +118,20 @@ mark {
   line-height: 2;
 }
 
+/* Urdu in Nastaliq. The calligraphic strokes have deep descenders, so the
+   line-height runs taller than Naskh Arabic to avoid clipping between lines.
+   `.font-urdu` is the full detail-page block; `.font-urdu-snippet` shares the
+   same font stack for compact card/list previews (size comes from the caller's
+   text-* class) — single source of truth for the Nastaliq fallback chain. */
+.font-urdu,
+.font-urdu-snippet {
+  font-family: var(--font-urdu), "Noto Nastaliq Urdu", "Amiri", serif;
+}
+.font-urdu {
+  font-size: 1.3em;
+  line-height: 2.6;
+}
+
 /* Skip link helper */
 .skip-link {
   position: absolute;

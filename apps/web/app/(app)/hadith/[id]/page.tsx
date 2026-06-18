@@ -5,6 +5,7 @@ import { collectionName } from "@hadith/shared-types";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { ShareButton } from "@/components/share-button";
 import { ArabicSection } from "./arabic-section";
+import { UrduSection } from "./urdu-section";
 import { ViewTracker } from "./view-tracker";
 import { getHadithById } from "@/lib/hadiths";
 import { getSiteUrl } from "@/lib/site";
@@ -142,6 +143,8 @@ export default async function HadithDetailPage({ params }: Params) {
         </h2>
         <p className="whitespace-pre-line text-lg leading-relaxed">{h.text_en_full}</p>
       </section>
+
+      <UrduSection text={h.text_ur ?? null} />
 
       <footer className="flex flex-wrap items-center gap-2 border-t border-[hsl(var(--border))] pt-4">
         <BookmarkButton hadithId={h.id} />

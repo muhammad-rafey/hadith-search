@@ -35,6 +35,8 @@ const MOCK_HADITHS_BASE: MockBase[] = [
       "Narrated Umar ibn al-Khattab: I heard Allah's Messenger saying, 'The reward of deeds depends upon the intentions and every person will get the reward according to what he has intended. So whoever emigrated for worldly benefits or for a woman to marry, his emigration was for what he emigrated for.'",
     text_ar:
       "إنما الأعمال بالنيات وإنما لكل امرئ ما نوى فمن كانت هجرته إلى دنيا يصيبها أو إلى امرأة ينكحها فهجرته إلى ما هاجر إليه",
+    text_ur:
+      "اعمال کا دارومدار نیتوں پر ہے اور ہر شخص کے لیے وہی ہے جس کی اس نے نیت کی۔ پس جس کی ہجرت دنیا حاصل کرنے یا کسی عورت سے نکاح کرنے کے لیے ہو، تو اس کی ہجرت اسی چیز کے لیے ہے جس کے لیے اس نے ہجرت کی۔",
     grades: [{ grader: "Sahih al-Bukhari", grade: "Sahih" }],
     urn: 41,
     language: "en",
@@ -58,6 +60,8 @@ const MOCK_HADITHS_BASE: MockBase[] = [
       "Narrated Ibn Umar: Allah's Messenger said: Islam is based on five pillars: to testify that none has the right to be worshipped but Allah and Muhammad is Allah's Messenger, to offer the prayers, to pay Zakat, to perform Hajj, and to observe fast during the month of Ramadan.",
     text_ar:
       "بني الإسلام على خمس شهادة أن لا إله إلا الله وأن محمدا رسول الله وإقام الصلاة وإيتاء الزكاة والحج وصوم رمضان",
+    text_ur:
+      "اسلام کی بنیاد پانچ چیزوں پر ہے: اس بات کی گواہی دینا کہ اللہ کے سوا کوئی معبود نہیں اور محمد ﷺ اللہ کے رسول ہیں، نماز قائم کرنا، زکوٰۃ ادا کرنا، حج کرنا اور رمضان کے روزے رکھنا۔",
     grades: [{ grader: "Sahih al-Bukhari", grade: "Sahih" }],
     urn: 48,
     language: "en",
@@ -191,6 +195,8 @@ const MOCK_HADITHS_BASE: MockBase[] = [
     text_en_full:
       "Narrated Anas: The Prophet said: None of you will have faith till he wishes for his (Muslim) brother what he likes for himself.",
     text_ar: "لا يؤمن أحدكم حتى يحب لأخيه ما يحب لنفسه",
+    text_ur:
+      "تم میں سے کوئی شخص اس وقت تک کامل مومن نہیں ہو سکتا جب تک وہ اپنے بھائی کے لیے وہی پسند نہ کرے جو اپنے لیے پسند کرتا ہے۔",
     grades: [{ grader: "Sahih al-Bukhari", grade: "Sahih" }],
     urn: 53,
     language: "en",

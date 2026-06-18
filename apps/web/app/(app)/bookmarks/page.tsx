@@ -111,9 +111,20 @@ export default function BookmarksPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-start justify-between gap-3">
-                  <p className="line-clamp-2 text-sm text-[hsl(var(--muted-foreground))]">
-                    {h.text_en}
-                  </p>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="line-clamp-2 text-sm text-[hsl(var(--muted-foreground))]">
+                      {h.text_en}
+                    </p>
+                    {h.text_ur ? (
+                      <p
+                        dir="rtl"
+                        lang="ur"
+                        className="font-urdu-snippet line-clamp-2 text-sm leading-loose text-[hsl(var(--muted-foreground))]"
+                      >
+                        {h.text_ur}
+                      </p>
+                    ) : null}
+                  </div>
                   <Button
                     type="button"
                     size="sm"

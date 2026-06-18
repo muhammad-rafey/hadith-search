@@ -4,6 +4,7 @@ import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { collectionName, isKnownCollection } from "@hadith/shared-types";
 import { ArabicSection } from "@/components/arabic-section";
+import { UrduSection } from "@/components/urdu-section";
 import { BookmarkButton } from "@/components/bookmark-button";
 import { EmptyState } from "@/components/empty-state";
 import { ShareButton } from "@/components/share-button";
@@ -121,6 +122,8 @@ export default function HadithDetailScreen() {
             {h.text_en_full}
           </Text>
         </View>
+
+        <UrduSection text={h.text_ur ?? null} />
 
         <View className="flex-row flex-wrap gap-2 border-t border-border pt-4">
           <BookmarkButton hadithId={h.id} />

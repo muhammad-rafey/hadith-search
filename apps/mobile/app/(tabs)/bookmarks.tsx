@@ -8,6 +8,7 @@ import { collectionName, type Hadith } from "@hadith/shared-types";
 import { EmptyState } from "@/components/empty-state";
 import { Icon } from "@/components/icon";
 import { StatusBarStrip } from "@/components/status-bar-strip";
+import { urduSnippetStyle } from "@/components/urdu-section";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
@@ -105,10 +106,21 @@ export default function BookmarksScreen() {
                     </Text>
                   </CardHeader>
                   <CardContent className="flex-row items-start justify-between gap-3">
-                    <View className="flex-1">
+                    <View className="flex-1 gap-1">
                       <Text size="sm" numberOfLines={2} className="text-muted-foreground">
                         {h.text_en}
                       </Text>
+                      {h.text_ur ? (
+                        <Text
+                          size="sm"
+                          numberOfLines={2}
+                          accessibilityLanguage="ur"
+                          className="text-muted-foreground"
+                          style={urduSnippetStyle}
+                        >
+                          {h.text_ur}
+                        </Text>
+                      ) : null}
                     </View>
                     <Pressable
                       onPress={() => remove(h.id)}

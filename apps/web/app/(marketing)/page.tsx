@@ -76,12 +76,12 @@ export default function LandingPage() {
             <Card>
               <CardHeader>
                 <Globe2 className="h-6 w-6 text-[hsl(var(--primary))]" aria-hidden="true" />
-                <CardTitle>Multilingual roadmap</CardTitle>
+                <CardTitle>Multilingual</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-[hsl(var(--muted-foreground))]">
-                  English first. Arabic and Urdu interfaces are on the roadmap, with semantic search
-                  aware of all three.
+                  Read every hadith in Arabic, English, and Urdu side by side. Fully multilingual
+                  semantic search is on the roadmap.
                 </p>
               </CardContent>
             </Card>

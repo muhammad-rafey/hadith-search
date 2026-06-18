@@ -4,6 +4,7 @@ import { View } from "react-native";
 import { collectionName, type SearchResult } from "@hadith/shared-types";
 import { HighlightText } from "@/components/highlight-text";
 import { Icon } from "@/components/icon";
+import { urduSnippetStyle } from "@/components/urdu-section";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Pressable } from "@/components/ui/pressable";
 import { Text } from "@/components/ui/text";
@@ -63,6 +64,17 @@ function HadithCardImpl({
             size="base"
             numberOfLines={4}
           />
+          {result.text_ur ? (
+            <Text
+              size="sm"
+              numberOfLines={3}
+              accessibilityLanguage="ur"
+              className="text-muted-foreground"
+              style={urduSnippetStyle}
+            >
+              {result.text_ur}
+            </Text>
+          ) : null}
           <View className="flex-row items-center justify-between pt-2">
             <Text size="xs" numberOfLines={1} className="flex-1 text-muted-foreground">
               {collectionLabel}

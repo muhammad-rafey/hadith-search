@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   const { data, error } = await supabase
     .from("hadith_table")
     .select(
-      'collection,"arabicURN","bookNumber","hadithNumber","ourHadithNumber","englishBabName","arabicBabName","englishText","arabicText","englishgrade1","arabicgrade1"',
+      'collection,"arabicURN","bookNumber","hadithNumber","ourHadithNumber","englishBabName","arabicBabName","englishText","arabicText","englishgrade1","arabicgrade1","urduText","urduSanad"',
     )
     .in('"arabicURN"', urns);
   if (error) {
@@ -74,6 +74,8 @@ export async function POST(req: Request) {
         arabic_text: r.arabicText,
         english_grade: r.englishgrade1,
         arabic_grade: r.arabicgrade1,
+        urdu_text: r.urduText,
+        urdu_sanad: r.urduSanad,
       }),
     )
     .filter(

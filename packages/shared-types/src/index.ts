@@ -32,6 +32,12 @@ export const SearchResultSchema = z.object({
   narrator: z.string().nullable(),
   text_en_full: z.string(),
   text_ar: z.string().nullable(),
+  /**
+   * Urdu translation (isnad + matn combined), cleaned. `.nullish()` keeps the
+   * contract backward-compatible: an older client tolerates its absence, and a
+   * pre-Urdu `query_cache` row still parses on read instead of churning.
+   */
+  text_ur: z.string().nullish(),
   relevance: z.number().min(0).max(1).optional(),
 });
 export type SearchResult = z.infer<typeof SearchResultSchema>;
@@ -124,6 +130,8 @@ export const HadithSchema = z.object({
   text_en: z.string(),
   text_en_full: z.string(),
   text_ar: z.string().nullable(),
+  /** Urdu translation (isnad + matn combined), cleaned. Null when none scraped. */
+  text_ur: z.string().nullish(),
   /** `grade_ar` is the Arabic-script grade (e.g. "صحيح" for "Sahih"); null when absent. */
   grades: z
     .array(z.object({ grader: z.string(), grade: z.string(), grade_ar: z.string().nullable() }))
@@ -168,6 +176,7 @@ export { MOCK_HADITHS, MOCK_BOOKS } from "./mock-hadiths";
 export {
   cleanArabicText,
   cleanEnglishText,
+  cleanUrduText,
   splitArabicSnad,
   extractNarratorFromEnglish,
   stripNarratorPrefix,

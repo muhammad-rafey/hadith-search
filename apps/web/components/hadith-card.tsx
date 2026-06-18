@@ -56,6 +56,17 @@ export function HadithCard({ result, position, queryTokens, queryHash, onClick }
         <p className="text-base leading-relaxed">
           {highlightTokens(result.text_en_full, queryTokens)}
         </p>
+        {result.text_ur ? (
+          // Compact Nastaliq snippet (the tall `.font-urdu` block style is for
+          // the detail page); inline family + leading keeps the card tidy.
+          <p
+            dir="rtl"
+            lang="ur"
+            className="font-urdu-snippet line-clamp-2 text-sm leading-loose text-[hsl(var(--muted-foreground))]"
+          >
+            {result.text_ur}
+          </p>
+        ) : null}
         <div
           className={cn(
             "relative z-10 flex items-center justify-between pt-2 text-xs text-[hsl(var(--muted-foreground))]",
