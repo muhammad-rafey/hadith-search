@@ -1,4 +1,4 @@
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useTabBarHeight } from "@/lib/use-tab-bar-height";
 import Constants from "expo-constants";
 import { ScrollView, View } from "react-native";
 import { StatusBarStrip } from "@/components/status-bar-strip";
@@ -16,7 +16,7 @@ import { FONT_SIZE_STEPS, THEMES } from "@/lib/themes";
  * on-device via the Zustand stores and fires the same analytics events.
  */
 export default function SettingsScreen() {
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useTabBarHeight();
   const { theme, setTheme } = useTheme();
 
   const fontSize = useUiStore((s) => s.fontSize);
