@@ -1,4 +1,4 @@
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useTabBarHeight } from "@/lib/use-tab-bar-height";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as React from "react";
 import { ActivityIndicator, FlatList, View } from "react-native";
@@ -25,7 +25,7 @@ import { useCollectionHadiths } from "@/lib/queries/use-collections";
  */
 export default function CollectionScreen() {
   const router = useRouter();
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useTabBarHeight();
   const { collection } = useLocalSearchParams<{ collection: string | string[] }>();
   // expo-router can return string | string[] for a dynamic segment; take the
   // first so a stray "/a/b" doesn't get mis-joined.

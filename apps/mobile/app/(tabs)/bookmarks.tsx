@@ -1,4 +1,4 @@
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useTabBarHeight } from "@/lib/use-tab-bar-height";
 import { useRouter } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import { ActivityIndicator, FlatList, View } from "react-native";
@@ -16,7 +16,7 @@ import { getHadithsByIds } from "@/lib/hadiths";
 import { useBookmarks } from "@/lib/queries/use-bookmarks";
 
 export default function BookmarksScreen() {
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useTabBarHeight();
   const router = useRouter();
   const ids = useBookmarks((s) => s.ids);
   const remove = useBookmarks((s) => s.remove);

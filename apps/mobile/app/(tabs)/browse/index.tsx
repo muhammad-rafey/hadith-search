@@ -1,4 +1,4 @@
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useTabBarHeight } from "@/lib/use-tab-bar-height";
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import { ActivityIndicator, FlatList, View } from "react-native";
@@ -16,7 +16,7 @@ import { useCollectionList } from "@/lib/queries/use-collections";
  */
 export default function BrowseScreen() {
   const router = useRouter();
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useTabBarHeight();
   const query = useCollectionList();
   const collections = query.data ?? [];
 
