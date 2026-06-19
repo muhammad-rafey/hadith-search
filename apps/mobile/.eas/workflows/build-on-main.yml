@@ -1,0 +1,26 @@
+name: Build on main
+
+# Runs on EAS servers whenever a commit lands on `main` — including the
+# merge commit created when a branch is merged into `main`. Builds iOS and
+# Android in parallel using the `production` profile from eas.json.
+#
+# To skip a run, include [eas skip] in the commit message.
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  build_android:
+    name: Build Android (production)
+    type: build
+    params:
+      platform: android
+      profile: production
+
+  build_ios:
+    name: Build iOS (production)
+    type: build
+    params:
+      platform: ios
+      profile: production
