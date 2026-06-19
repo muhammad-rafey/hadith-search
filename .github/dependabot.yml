@@ -18,6 +18,18 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # apps/mobile uses nativewind@4, whose Metro plugin only supports
+      # Tailwind v3 ("NativeWind only supports Tailwind CSS v3"). Dependabot's
+      # single workspace entry can't scope an ignore to one package, so block
+      # tailwindcss MAJOR bumps for the whole workspace: it keeps apps/mobile
+      # pinned to v3 (apps/web stays on v4) while minor/patch bumps still flow
+      # to both. Bump tailwindcss majors by hand after checking NativeWind
+      # supports the new major. (Regression context: PR #17 broke the EAS build
+      # by bumping both web and mobile to v4 at once.)
+      - dependency-name: "tailwindcss"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: "github-actions"
     directory: "/"
