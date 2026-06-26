@@ -1,8 +1,19 @@
-name: Build on main
+name: Build Android APK on main
 
-# Runs on EAS servers whenever a commit lands on `main` — including the
-# merge commit created when a branch is merged into `main`. Builds iOS and
-# Android in parallel using the `production` profile from eas.json.
+# Runs on EAS servers whenever a commit lands on `main` — including the merge
+# commit created when a branch is merged into `main`. Builds an INSTALLABLE
+# Android APK using the `preview` profile (android.buildType "apk" +
+# distribution "internal"). Internal distribution gives a shareable install
+# page + QR code you can open on any number of Android devices and install
+# directly — Android needs no device registration.
+#
+# Grab each build from the project's Builds page:
+#   https://expo.dev/accounts/slashcommit/projects/hadith-search/builds
+#
+# iOS is intentionally omitted: iOS internal distribution requires registered
+# device UDIDs + an Apple Developer account and cannot be sideloaded like an
+# APK. Build it manually with `eas build -p ios --profile preview` once Apple
+# credentials + device registration are set up.
 #
 # To skip a run, include [eas skip] in the commit message.
 
@@ -11,16 +22,9 @@ on:
     branches: ['main']
 
 jobs:
-  build_android:
-    name: Build Android (production)
+  build_android_apk:
+    name: Build Android APK (preview)
     type: build
     params:
       platform: android
-      profile: production
-
-  build_ios:
-    name: Build iOS (production)
-    type: build
-    params:
-      platform: ios
-      profile: production
+      profile: preview
