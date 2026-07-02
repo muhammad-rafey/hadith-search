@@ -20,12 +20,12 @@
     "urdu-mismatches": "node --env-file-if-exists=.env.local scraper/dump_mismatches.mjs"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
+    "@biomejs/biome": "^2.5.2",
     "cheerio": "^1.0.0",
     "csv-parse": "^6.2.1",
     "csv-stringify": "^6.5.2",
     "p-limit": "^6.1.0",
-    "pg": "^8.13.1",
+    "pg": "^8.22.0",
     "typescript": "^6.0.3"
   },
   "pnpm": {
